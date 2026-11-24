@@ -1,0 +1,223 @@
+/* ==========================================================================
+   RePix-VFI project page: brand tokens and page components.
+   The shared components (layout, nav, hero, section heads, figures, tabs,
+   tables, disclosures, key points, lightbox, BibTeX, footer) are in
+   family.css, which this file follows. The video cards, switchers and clip
+   strips follow the MotionMaestro and RawMo pages.
+   Colours: the two colours of the paper, kept easy on the eyes.
+   - Pink: #FF0066 is RePix-VFI in the paper's Fig. 1 and in the logo. The
+     logo keeps it as is; the page uses a calmer shade of the same pink for
+     rules, accents and large text, and deeper ones for small text.
+   - Light blue: the paper's highlighted table rows (cyan!8, shown by PDF
+     viewers as about #EAF7FD) tint the filled areas: our table rows, the
+     active navigation item, the current figure, the abstract.
+   ========================================================================== */
+
+/* ---------- 1. Brand tokens ---------------------------------------------- */
+:root {
+  --accent: #E8317A;           /* the logo pink #FF0066, calmer: rules, borders, icons, large text (4.1:1 on white) */
+  --accent-text: #C41862;      /* small text and links (5.7:1 on white, 5.3:1 on the light blue) */
+  --accent-strong: #9C1250;    /* hover (8.5:1) */
+  --accent-soft: #EAF7FD;      /* tinted fills: the light blue of the paper's table rows (cyan!8) */
+  --accent-line: #B9E3F5;      /* tinted borders, the same light blue, a step deeper */
+  --logo-k: 1.494;             /* hero logo height factor: the wordmark has the GeoSET wordmark's cap height */
+}
+
+/* ---------- 2. Hero ------------------------------------------------------ */
+/* phones: three authors keep one line */
+@media (max-width: 480px) { .hero-authors { column-gap: 14px; } }
+
+/* section leads: balanced lines */
+.section-head .lead { text-wrap: balance; }
+
+/* ---------- 3. Video galleries (x16 / x8 comparisons) -------------------- */
+.hero-gallery .carousel-nav { margin: 16px 0 0; }
+.thumbs--hero .thumb { flex-basis: 164px; }
+.thumbs--hero .thumb span b { display: block; }   /* dataset name above the sequence */
+@media (max-width: 640px) { .thumbs--hero .thumb { flex-basis: 148px; } }
+.section--headline .note, .section .note { margin-top: 12px; }
+
+/* ---------- 4. Notes under a gallery ------------------------------------- */
+.note {
+  margin: 16px auto 0; max-width: 112ch; text-align: center;
+  font-size: .875rem; line-height: 1.55; color: var(--muted);
+}
+
+/* ---------- 5. Video card ------------------------------------------------ */
+/* the comparison videos are nearly square (a 2 x 4 grid): a card is as wide as the viewport height allows, so the
+   whole grid stays on screen; --ar (width / height of the video) is set per card */
+.vcard {
+  position: relative;
+  max-width: min(100%, calc((100vh - 190px) * var(--ar, 1.07)));
+  margin-inline: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+@media (max-width: 640px) { .vcard { max-width: 100%; } }
+.vcard + .vcard { margin-top: 22px; }
+
+.vcard-media {
+  position: relative;
+  aspect-ratio: var(--ar, 1.07);
+  background: #fff;
+  cursor: zoom-in;
+}
+.vcard-media video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; background: transparent;
+}
+/* spinner while a clip buffers */
+.vcard-media::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  border: 3px solid rgba(28, 39, 56, .14); border-top-color: var(--accent);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.vcard.is-loading .vcard-media::after { opacity: 1; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* big play button: shown when the viewer paused or reduced motion is on */
+.vcard-play {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 68px; height: 68px; border-radius: 50%;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(28, 39, 56, .74); color: #fff;
+  box-shadow: 0 8px 24px rgba(28, 39, 56, .3);
+  transition: background-color .15s, transform .15s;
+}
+.vcard-play svg { width: 28px; height: 28px; margin-left: 3px; }
+.vcard-play:hover { background: var(--ink); transform: translate(-50%, -50%) scale(1.05); }
+.vcard.is-held:not(.is-playing) .vcard-play { display: flex; }
+
+.vcard-bar {
+  display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap;
+  padding: 7px 10px 7px 16px;
+  border-top: 1px solid var(--border);
+}
+.vcard-caption { flex: 1 1 260px; min-width: 0; margin: 0; font-size: .875rem; line-height: 1.45; color: var(--muted); }
+.vcard-caption strong { color: var(--ink); font-weight: 600; }
+.vcard-caption .ours { color: var(--accent-text); font-weight: 600; }
+.vcard-tools { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+
+.tool-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 11px; border-radius: var(--radius-pill);
+  font-size: .8438rem; font-weight: 600; color: var(--muted);
+  transition: background-color .15s, color .15s;
+}
+.tool-btn svg { width: 16px; height: 16px; flex: none; }
+.tool-btn:hover { background: var(--bg-sunken); color: var(--ink); }
+.tool-btn .i-pause { display: none; }
+.vcard.is-playing .tool-btn .i-pause { display: block; }
+.vcard.is-playing .tool-btn .i-play { display: none; }
+
+.speed {
+  display: inline-flex; padding: 2px; gap: 2px;
+  border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--bg);
+}
+.speed button {
+  height: 26px; min-width: 38px; padding: 0 8px; border-radius: var(--radius-pill);
+  font: 600 .78rem/1 var(--font-mono); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.speed button:hover { color: var(--ink); }
+.speed button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+@media (max-width: 640px) {
+  .vcard-bar { padding: 6px 6px 6px 12px; }
+  .vcard-caption { flex-basis: 100%; order: 2; padding: 2px 4px 4px 0; font-size: .85rem; }
+  .vcard-tools { margin-left: 0; width: 100%; }
+  .vcard-tools [data-action="expand"] { margin-left: auto; }
+  .tool-btn .lbl-optional { display: none; }
+}
+
+/* ---------- 6. Switchers and strips -------------------------------------- */
+/* horizontal scroller with edge fades (thumbnail strips; fade classes set by main.js) */
+.hscroll {
+  position: relative;
+  overflow-x: auto; overscroll-behavior-x: contain;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+.hscroll::-webkit-scrollbar { display: none; }
+
+.switchbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px 16px; margin-bottom: 22px;
+}
+.switchbar--center { justify-content: center; }
+
+/* clip / figure strip: prev, thumbnails, next */
+.carousel-nav { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 14px; }
+.carousel-nav .thumbs { flex: 0 1 auto; min-width: 0; }
+.thumbs { display: flex; gap: 10px; padding: 3px; scroll-padding-inline: 3px; }
+.thumb {
+  flex: 0 0 196px;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 5px 5px 7px; border-radius: var(--radius); text-align: left;
+  background: var(--bg); border: 1px solid var(--border);
+  transition: border-color .15s, box-shadow .15s;
+  scroll-snap-align: start;
+}
+.thumb:hover { border-color: var(--border-strong); }
+.thumb img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-s); background: var(--bg-sunken); }
+.thumb span {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  padding: 0 3px; font-size: .8rem; line-height: 1.35; color: var(--muted); font-weight: 500;
+}
+.thumb span b { color: var(--ink); font-weight: 700; margin-right: 2px; }
+.thumb[aria-selected="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.thumbs--fig .thumb { flex-basis: 148px; }
+.thumbs--fig .thumb img { aspect-ratio: 16 / 9; object-fit: contain; background: #fff; border: 1px solid var(--border); }
+@media (max-width: 640px) {
+  .carousel-nav .carousel-btn { display: none; }
+  .thumb { flex: 0 0 148px; }
+  .thumbs--fig .thumb { flex-basis: 150px; }
+}
+
+/* ---------- 7. Video lightbox (family lightbox chrome) ------------------- */
+/* the video keeps its own aspect ratio (nearly square) and fits the dialog */
+.lightbox--video .lb-stage video {
+  display: block; margin: auto; width: auto; height: auto;
+  max-width: 100%; max-height: calc(100dvh - 150px);
+  background: #fff; border-radius: 6px;
+}
+.lightbox .speed { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .2); }
+.lightbox .speed button { height: 30px; color: rgba(255, 255, 255, .75); }
+.lightbox .speed button[aria-pressed="true"] { background: #fff; color: var(--ink); }
+.lightbox--video .lb-caption { text-align: center; }
+.lb-hint { display: none; }
+@media (max-width: 640px) and (orientation: portrait) {
+  .lightbox--video .lb-hint { display: block; margin: 0 auto 12px; padding: 0 16px; font-size: .8rem; color: rgba(255, 255, 255, .6); text-align: center; }
+}
+
+/* ---------- 8. Figures and tables ---------------------------------------- */
+.figure--narrow .figure-media { max-width: 700px; margin-inline: auto; }
+.figure--mid .figure-media { max-width: 860px; margin-inline: auto; }
+.figure + .figure { margin-top: clamp(28px, 3.5vw, 40px); }
+/* the components block: the Fig. 4 video next to the figure on wide screens */
+.duo { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(24px, 3vw, 36px); align-items: start; }
+.results td.hl { background: var(--accent-soft); }
+.results th.is-ours { background: var(--accent-soft); color: var(--accent-text); }
+.results sub, .results sup, .table-figure figcaption sub { font-size: .72em; line-height: 0; }
+.results .col-venue { white-space: nowrap; }
+.results--text td:not(.col-method) { white-space: normal; }
+.table-figure--wide .table-meta, .table-figure--wide .table-frame { max-width: none; }
+.table-figure + .table-figure, .figure + .table-figure, .table-figure + .figure, .vcard + .figure, .figure + .vcard { margin-top: clamp(28px, 3.5vw, 40px); }
+@media (max-width: 820px) { .results :is(th, td) { padding-inline: 9px; } }
+
+/* ---------- 9. Touch input ----------------------------------------------- */
+@media (pointer: coarse) {
+  .vcard-tools .tool-btn, .speed button { min-height: 40px; }
+  .speed button { min-width: 44px; }
+  .vcard-tools .tool-btn { min-width: 44px; justify-content: center; }
+}
+
+/* ---------- 10. Print ---------------------------------------------------- */
+@media print {
+  .topnav, .vcard-bar, .vcard-play, .copy-btn, .carousel-nav .carousel-btn, .skip-link { display: none !important; }
+  .section { padding-block: 24px; }
+}

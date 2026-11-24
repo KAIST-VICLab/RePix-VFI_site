@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RePix-VFI &middot; Re-rendering Observed Pixels for Video Frame Interpolation with Generative Priors from One-Step Diffusion</title>
+  <meta name="description" content="RePix-VFI is a multi-frame video frame interpolation framework: a pretrained video diffusion model refines a flow-rendered draft of the whole window in one forward pass, generative readback matches the observed keyframes to the generated video, and the original keyframe pixels are re-rendered outside the VAE and fused with the generated appearance.">
+  <meta name="author" content="Dayeon Kim, Jeonghyeok Do, Munchurl Kim">
+  <link rel="canonical" href="https://kaist-viclab.github.io/RePix-VFI_site/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="RePix-VFI">
+  <meta property="og:title" content="RePix-VFI: Re-rendering Observed Pixels for Video Frame Interpolation with Generative Priors from One-Step Diffusion">
+  <meta property="og:description" content="RePix-VFI is a multi-frame video frame interpolation framework: a pretrained video diffusion model refines a flow-rendered draft of the whole window in one forward pass, generative readback matches the observed keyframes to the generated video, and the original keyframe pixels are re-rendered outside the VAE and fused with the generated appearance.">
+  <meta property="og:url" content="https://kaist-viclab.github.io/RePix-VFI_site/">
+  <meta property="og:image" content="https://kaist-viclab.github.io/RePix-VFI_site/static/images/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The RePix-VFI logo beside the paper&#x27;s qualitative comparison at x16 on SNU-FILM and DAVIS: FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RePix-VFI: Re-rendering Observed Pixels for Video Frame Interpolation with Generative Priors from One-Step Diffusion">
+  <meta name="twitter:description" content="RePix-VFI is a multi-frame video frame interpolation framework: a pretrained video diffusion model refines a flow-rendered draft of the whole window in one forward pass, generative readback matches the observed keyframes to the generated video, and the original keyframe pixels are re-rendered outside the VAE and fused with the generated appearance.">
+  <meta name="twitter:image" content="https://kaist-viclab.github.io/RePix-VFI_site/static/images/og.jpg">
+  <meta name="twitter:image:alt" content="The RePix-VFI logo beside the paper&#x27;s qualitative comparison at x16 on SNU-FILM and DAVIS: FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth.">
+  <meta name="theme-color" content="#E8317A">
+  <link rel="icon" href="static/images/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="static/images/favicon-64.png" sizes="64x64" type="image/png">
+  <link rel="icon" href="static/images/icon_square.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="static/images/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@500..800&display=swap">
+  <link rel="stylesheet" href="static/css/family.css">
+  <link rel="stylesheet" href="static/css/style.css">
+  <noscript><style>a[href*="/XXXX.XXXX"] { pointer-events: none; cursor: default; } .vcard-media > video { display: none; } .vcard-media > noscript > a { position: absolute; inset: 0; } .vcard-media > noscript img { width: 100%; height: 100%; object-fit: contain; }</style></noscript>
+  <script>document.documentElement.classList.add('js');</script>
+  <script defer src="static/js/family.js"></script>
+  <script defer src="static/js/main.js"></script>
+</head>
+<body>
+<svg class="icon-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-paper" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-arxiv" viewBox="0 0 24 24"><path d="M3.5 9.5L12 4l8.5 5.5M4.5 20h15M6.5 11.5v5.5M10 11.5v5.5M14 11.5v5.5M17.5 11.5v5.5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8.5 7.5L4 12l4.5 4.5M15.5 7.5L20 12l-4.5 4.5M13.5 5l-3 14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.6v6.8l5.4-3.4z" fill="currentColor"/></symbol>
+  <symbol id="i-cite" viewBox="0 0 24 24"><path d="M9 4.5c-1.9 0-3 .9-3 2.8v2.4c0 1.3-.7 2.1-2 2.3 1.3.2 2 1 2 2.3v2.4c0 1.9 1.1 2.8 3 2.8M15 4.5c1.9 0 3 .9 3 2.8v2.4c0 1.3.7 2.1 2 2.3-1.3.2-2 1-2 2.3v2.4c0 1.9 1.1 2.8 3 2.8"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5v-2a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-swipe" viewBox="0 0 24 24"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6.5 9.5L12 15l5.5-5.5"/></symbol>
+</svg>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="topnav" aria-label="Page sections">
+  <div class="topnav-inner container container--wide">
+    <a class="topnav-brand" href="#top" aria-label="RePix-VFI, back to top"><img src="static/images/icon.svg" width="720" height="494" alt=""><span class="wordmark" aria-hidden="true"><span>RePix</span>-VFI</span></a>
+    <div class="topnav-links">
+      <a href="#videos">Videos</a>
+      <a href="#components">Components</a>
+      <a href="#figures">Figures</a>
+      <a href="#results">Quantitative</a>
+      <a href="#method">Method</a>
+      <a href="#bibtex">BibTeX</a>
+    </div>
+    <a class="topnav-cta" href="static/paper/RePix-VFI.pdf" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-paper"/></svg>Paper</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="container">
+    <h1 class="hero-h1">
+      <img class="hero-logo" src="static/images/logo.svg" width="2048" height="494" alt="RePix-VFI:" fetchpriority="high">
+      <span class="hero-title"><span class="hero-accent">Re</span>-rendering Observed <span class="hero-accent">Pix</span>els for Video Frame Interpolation with Generative Priors from <span class="nowrap">One-Step</span> Diffusion</span>
+    </h1>
+    <p class="hero-authors">
+      <span class="author"><a href="https://scholar.google.com/citations?user=Qh--APMAAAAJ" target="_blank" rel="noopener">Dayeon Kim</a></span>
+      <span class="author"><a href="https://jeonghyeokdo.github.io/" target="_blank" rel="noopener">Jeonghyeok Do</a><sup>&dagger;</sup></span>
+      <span class="author"><a href="https://www.viclab.kaist.ac.kr/" target="_blank" rel="noopener">Munchurl Kim</a><sup>&dagger;</sup></span>
+    </p>
+    <p class="hero-affil">Korea Advanced Institute of Science and Technology (KAIST), South Korea</p>
+    <p class="hero-notes"><span><sup>&dagger;</sup>&thinsp;Co-corresponding authors</span><span class="mono mail"><a href="mailto:dyk4501@kaist.ac.kr">dyk4501@kaist.ac.kr</a><a href="mailto:ehwjdgur0913@kaist.ac.kr">ehwjdgur0913@kaist.ac.kr</a><a href="mailto:mkimee@kaist.ac.kr">mkimee@kaist.ac.kr</a></span></p>
+    <p class="venue-pill">arXiv preprint, 2026</p>
+    <nav class="btn-row" aria-label="Paper resources">
+      <a class="btn" href="static/paper/RePix-VFI.pdf" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-paper"/></svg>Paper</a>
+      <a class="btn" href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-arxiv"/></svg>arXiv</a>
+      <a class="btn" href="https://github.com/KAIST-VICLab/RePix-VFI" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true"><use href="#i-code"/></svg>Code</a>
+      <a class="btn" href="#videos"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Videos</a>
+      <a class="btn" href="#bibtex"><svg class="icon" aria-hidden="true"><use href="#i-cite"/></svg>BibTeX</a>
+    </nav>
+    <details class="abstract-toggle" id="abstract" data-animate>
+      <summary><span>Abstract</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+      <div class="abstract-panel">
+        <div class="abstract">
+          <p>Multi-frame video frame interpolation (VFI) aims to reconstruct dense video from sparse keyframes, requiring accurate intermediate motion and faithful appearance. As temporal gaps grow, flow-based methods can retain observed textures but misplace them under ambiguous motion, whereas iterative latent-diffusion models can synthesize plausible content but incur substantial sampling costs and may alter details during reconstruction with a variational autoencoder (VAE).</p>
+          <p>We present <strong>RePix-VFI</strong>, named for <strong>Re</strong>-rendering observed <strong>Pix</strong>els, a multi-frame VFI framework that couples draft-conditioned one-step video diffusion with reconstruction from observed keyframes. A pretrained video diffusion model refines a flow-rendered draft of the whole window in a single forward pass. For each target frame, our <em>generative readback</em> matches its two bounding keyframes to the generated prediction using an optical-flow estimator. The resulting correspondences guide re-rendering of original keyframe RGB pixels outside the VAE. A lightweight appearance fusion head combines these renderings with generated appearance.</p>
+          <p>Experiments on benchmark datasets demonstrate significant improvements in reconstruction and perceptual quality. On SNU-FILM at &times;8 and &times;16, RePix-VFI achieves the highest PSNR and the lowest LPIPS, FloLPIPS, and tOF among the compared methods, exceeding the best evaluated diffusion-based baseline by 1.71 and 1.48&nbsp;dB in PSNR, respectively. It also runs 32&ndash;42&times; faster than the state-of-the-art multi-frame VFI diffusion model.</p>
+        </div>
+      </div>
+    </details>
+  </div>
+</header>
+
+  <main id="main">
+    <!-- ============ HEADLINE: comparison videos ============ -->
+    <section class="section section--headline" id="videos" aria-labelledby="videos-title">
+      <div class="container container--wide">
+        <header class="section-head">
+          <h2 class="section-title" id="videos-title">Large gaps, frame by frame</h2>
+          <p class="lead">Each video interpolates a window from keyframes 16 or 8 frames apart and plays it three times: in real time, then 3&times; and 6&times; slower. Every column shows the full frame above and a fixed enlarged crop below.</p>
+        </header>
+<div data-switch>
+<div class="switchbar switchbar--center">
+<div class="tablist" role="tablist" aria-label="Interpolation factor"><button type="button" class="tab" role="tab" id="fx-tab-x16" aria-controls="fx-x16" aria-selected="true">&times;16<small>9 videos</small></button><button type="button" class="tab" role="tab" id="fx-tab-x8" aria-controls="fx-x8" aria-selected="false">&times;8<small>5 videos</small></button></div>
+</div>
+<div class="seg-panel" role="tabpanel" id="fx-x16" aria-labelledby="fx-tab-x16">
+<div class="carousel hero-gallery" data-switch>
+<div class="slides">
+<figure class="vcard vcard--hero slide" id="x16-1" role="tabpanel" aria-labelledby="x16-t1" data-title="SNU-FILM &middot; 0017 &middot; ×16" style="--ar: 1.2061">
+  <div class="vcard-media"><video data-src="static/videos/x16_snu_0017.mp4" poster="static/videos/x16_snu_0017.jpg" width="1416" height="1174" muted loop playsinline preload="none" aria-label="×16 interpolation on SNU-FILM 0017: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_snu_0017.mp4"><img src="static/videos/x16_snu_0017.jpg" alt="×16 interpolation on SNU-FILM 0017: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>SNU-FILM &middot; 0017 &middot; ×16</strong>, from Fig.&nbsp;3. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x16-2" role="tabpanel" aria-labelledby="x16-t2" data-title="SNU-FILM &middot; 0018 &middot; ×16" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x16_snu_0018.mp4" data-poster="static/videos/x16_snu_0018.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×16 interpolation on SNU-FILM 0018: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_snu_0018.mp4"><img src="static/videos/x16_snu_0018.jpg" alt="×16 interpolation on SNU-FILM 0018: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>SNU-FILM &middot; 0018 &middot; ×16</strong>, from Fig.&nbsp;3. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x16-3" role="tabpanel" aria-labelledby="x16-t3" data-title="DAVIS &middot; motorbike &middot; ×16" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x16_davis_motorbike.mp4" data-poster="static/videos/x16_davis_motorbike.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×16 interpolation on DAVIS motorbike: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_davis_motorbike.mp4"><img src="static/videos/x16_davis_motorbike.jpg" alt="×16 interpolation on DAVIS motorbike: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>DAVIS &middot; motorbike &middot; ×16</strong>, from Fig.&nbsp;3. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x16-4" role="tabpanel" aria-labelledby="x16-t4" data-title="DAVIS &middot; car-roundabout &middot; ×16" style="--ar: 1.0489" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x16_davis_car-roundabout.mp4" data-poster="static/videos/x16_davis_car-roundabout.jpg" width="1416" height="1350" muted loop playsinline preload="none" aria-label="×16 interpolation on DAVIS car-roundabout: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_davis_car-roundabout.mp4"><img src="static/videos/x16_davis_car-roundabout.jpg" alt="×16 interpolation on DAVIS car-roundabout: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>DAVIS &middot; car-roundabout &middot; ×16</strong>, from Fig.&nbsp;3. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x16-5" role="tabpanel" aria-labelledby="x16-t5" data-title="SNU-FILM &middot; 0013 &middot; ×16" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x16_snu_0013.mp4" data-poster="static/videos/x16_snu_0013.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×16 interpolation on SNU-FILM 0013: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_snu_0013.mp4"><img src="static/videos/x16_snu_0013.jpg" alt="×16 interpolation on SNU-FILM 0013: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>SNU-FILM &middot; 0013 &middot; ×16</strong>, from Fig.&nbsp;7. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x16-6" role="tabpanel" aria-labelledby="x16-t6" data-title="DAVIS &middot; car-shadow &middot; ×16" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x16_davis_car-shadow.mp4" data-poster="static/videos/x16_davis_car-shadow.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×16 interpolation on DAVIS car-shadow: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_davis_car-shadow.mp4"><img src="static/videos/x16_davis_car-shadow.jpg" alt="×16 interpolation on DAVIS car-shadow: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>DAVIS &middot; car-shadow &middot; ×16</strong>, from Fig.&nbsp;7. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x16-7" role="tabpanel" aria-labelledby="x16-t7" data-title="Adobe240 &middot; IMG_0015 &middot; ×16" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x16_adobe_img_0015.mp4" data-poster="static/videos/x16_adobe_img_0015.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×16 interpolation on Adobe240 IMG_0015: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_adobe_img_0015.mp4"><img src="static/videos/x16_adobe_img_0015.jpg" alt="×16 interpolation on Adobe240 IMG_0015: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>Adobe240 &middot; IMG_0015 &middot; ×16</strong>, from Fig.&nbsp;7. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x16-8" role="tabpanel" aria-labelledby="x16-t8" data-title="REDS &middot; 012 &middot; ×16" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x16_reds_012.mp4" data-poster="static/videos/x16_reds_012.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×16 interpolation on REDS 012: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_reds_012.mp4"><img src="static/videos/x16_reds_012.jpg" alt="×16 interpolation on REDS 012: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>REDS &middot; 012 &middot; ×16</strong>, from Fig.&nbsp;7. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x16-9" role="tabpanel" aria-labelledby="x16-t9" data-title="DAVIS &middot; motorbike &middot; ×16" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x16_davis_motorbike_fig5.mp4" data-poster="static/videos/x16_davis_motorbike_fig5.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×16 interpolation on DAVIS motorbike: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x16_davis_motorbike_fig5.mp4"><img src="static/videos/x16_davis_motorbike_fig5.jpg" alt="×16 interpolation on DAVIS motorbike: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>DAVIS &middot; motorbike &middot; ×16</strong> (the crop of Fig.&nbsp;5), from Fig.&nbsp;5. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+</div>
+<div class="carousel-nav">
+<button type="button" class="carousel-btn" data-prev aria-label="Previous video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+<div class="thumbs hscroll thumbs--hero" role="tablist" aria-label="x16 videos">
+<button type="button" class="thumb" role="tab" id="x16-t1" aria-controls="x16-1" aria-selected="true"><img src="static/videos/x16_snu_0017_thumb.jpg" alt="First frame of SNU-FILM 0017" width="341" height="142" loading="lazy" decoding="async"><span><b>SNU-FILM</b> 0017 &middot; Fig.&nbsp;3</span></button>
+<button type="button" class="thumb" role="tab" id="x16-t2" aria-controls="x16-2" aria-selected="false"><img src="static/videos/x16_snu_0018_thumb.jpg" alt="First frame of SNU-FILM 0018" width="341" height="192" loading="lazy" decoding="async"><span><b>SNU-FILM</b> 0018 &middot; Fig.&nbsp;3</span></button>
+<button type="button" class="thumb" role="tab" id="x16-t3" aria-controls="x16-3" aria-selected="false"><img src="static/videos/x16_davis_motorbike_thumb.jpg" alt="First frame of DAVIS motorbike" width="341" height="192" loading="lazy" decoding="async"><span><b>DAVIS</b> motorbike &middot; Fig.&nbsp;3</span></button>
+<button type="button" class="thumb" role="tab" id="x16-t4" aria-controls="x16-4" aria-selected="false"><img src="static/videos/x16_davis_car-roundabout_thumb.jpg" alt="First frame of DAVIS car-roundabout" width="341" height="193" loading="lazy" decoding="async"><span><b>DAVIS</b> car-roundabout &middot; Fig.&nbsp;3</span></button>
+<button type="button" class="thumb" role="tab" id="x16-t5" aria-controls="x16-5" aria-selected="false"><img src="static/videos/x16_snu_0013_thumb.jpg" alt="First frame of SNU-FILM 0013" width="341" height="192" loading="lazy" decoding="async"><span><b>SNU-FILM</b> 0013 &middot; Fig.&nbsp;7</span></button>
+<button type="button" class="thumb" role="tab" id="x16-t6" aria-controls="x16-6" aria-selected="false"><img src="static/videos/x16_davis_car-shadow_thumb.jpg" alt="First frame of DAVIS car-shadow" width="341" height="192" loading="lazy" decoding="async"><span><b>DAVIS</b> car-shadow &middot; Fig.&nbsp;7</span></button>
+<button type="button" class="thumb" role="tab" id="x16-t7" aria-controls="x16-7" aria-selected="false"><img src="static/videos/x16_adobe_img_0015_thumb.jpg" alt="First frame of Adobe240 IMG_0015" width="341" height="192" loading="lazy" decoding="async"><span><b>Adobe240</b> IMG_0015 &middot; Fig.&nbsp;7</span></button>
+<button type="button" class="thumb" role="tab" id="x16-t8" aria-controls="x16-8" aria-selected="false"><img src="static/videos/x16_reds_012_thumb.jpg" alt="First frame of REDS 012" width="341" height="192" loading="lazy" decoding="async"><span><b>REDS</b> 012 &middot; Fig.&nbsp;7</span></button>
+<button type="button" class="thumb" role="tab" id="x16-t9" aria-controls="x16-9" aria-selected="false"><img src="static/videos/x16_davis_motorbike_fig5_thumb.jpg" alt="First frame of DAVIS motorbike" width="341" height="192" loading="lazy" decoding="async"><span><b>DAVIS</b> motorbike &middot; Fig.&nbsp;5</span></button>
+</div>
+<button type="button" class="carousel-btn" data-next aria-label="Next video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+</div>
+</div>
+<div class="seg-panel" role="tabpanel" id="fx-x8" aria-labelledby="fx-tab-x8" hidden>
+<div class="carousel hero-gallery" data-switch>
+<div class="slides">
+<figure class="vcard vcard--hero slide" id="x8-1" role="tabpanel" aria-labelledby="x8-t1" data-title="SNU-FILM &middot; 0000 &middot; ×8" style="--ar: 0.9291">
+  <div class="vcard-media"><video data-src="static/videos/x8_snu_0000.mp4" data-poster="static/videos/x8_snu_0000.jpg" width="1416" height="1524" muted loop playsinline preload="none" aria-label="×8 interpolation on SNU-FILM 0000: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x8_snu_0000.mp4"><img src="static/videos/x8_snu_0000.jpg" alt="×8 interpolation on SNU-FILM 0000: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>SNU-FILM &middot; 0000 &middot; ×8</strong>, from Fig.&nbsp;6. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x8-2" role="tabpanel" aria-labelledby="x8-t2" data-title="DAVIS &middot; lucia &middot; ×8" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x8_davis_lucia.mp4" data-poster="static/videos/x8_davis_lucia.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×8 interpolation on DAVIS lucia: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x8_davis_lucia.mp4"><img src="static/videos/x8_davis_lucia.jpg" alt="×8 interpolation on DAVIS lucia: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>DAVIS &middot; lucia &middot; ×8</strong>, from Fig.&nbsp;6. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x8-3" role="tabpanel" aria-labelledby="x8-t3" data-title="Adobe240 &middot; IMG_0017 &middot; ×8" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x8_adobe_img_0017.mp4" data-poster="static/videos/x8_adobe_img_0017.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×8 interpolation on Adobe240 IMG_0017: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x8_adobe_img_0017.mp4"><img src="static/videos/x8_adobe_img_0017.jpg" alt="×8 interpolation on Adobe240 IMG_0017: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>Adobe240 &middot; IMG_0017 &middot; ×8</strong>, from Fig.&nbsp;6. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x8-4" role="tabpanel" aria-labelledby="x8-t4" data-title="REDS &middot; 003 &middot; ×8" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x8_reds_003.mp4" data-poster="static/videos/x8_reds_003.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×8 interpolation on REDS 003: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x8_reds_003.mp4"><img src="static/videos/x8_reds_003.jpg" alt="×8 interpolation on REDS 003: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>REDS &middot; 003 &middot; ×8</strong>, from Fig.&nbsp;6. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+<figure class="vcard vcard--hero slide" id="x8-5" role="tabpanel" aria-labelledby="x8-t5" data-title="DAVIS &middot; camel &middot; ×8" style="--ar: 1.0679" hidden>
+  <div class="vcard-media"><video data-src="static/videos/x8_davis_camel.mp4" data-poster="static/videos/x8_davis_camel.jpg" width="1416" height="1326" muted loop playsinline preload="none" aria-label="×8 interpolation on DAVIS camel: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below"></video><noscript><a href="static/videos/x8_davis_camel.mp4"><img src="static/videos/x8_davis_camel.jpg" alt="×8 interpolation on DAVIS camel: overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth; full frames above, detail crops below" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>DAVIS &middot; camel &middot; ×8</strong>, from an additional example. Top: overlaid inputs, FILM, GIMM-VFI, MoMo; bottom: SPEED, LDF-VFI, <span class="ours">RePix-VFI</span>, GT.</p></figcaption>
+</figure>
+</div>
+<div class="carousel-nav">
+<button type="button" class="carousel-btn" data-prev aria-label="Previous video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+<div class="thumbs hscroll thumbs--hero" role="tablist" aria-label="x8 videos">
+<button type="button" class="thumb" role="tab" id="x8-t1" aria-controls="x8-1" aria-selected="true"><img src="static/videos/x8_snu_0000_thumb.jpg" alt="First frame of SNU-FILM 0000" width="341" height="291" loading="lazy" decoding="async"><span><b>SNU-FILM</b> 0000 &middot; Fig.&nbsp;6</span></button>
+<button type="button" class="thumb" role="tab" id="x8-t2" aria-controls="x8-2" aria-selected="false"><img src="static/videos/x8_davis_lucia_thumb.jpg" alt="First frame of DAVIS lucia" width="341" height="192" loading="lazy" decoding="async"><span><b>DAVIS</b> lucia &middot; Fig.&nbsp;6</span></button>
+<button type="button" class="thumb" role="tab" id="x8-t3" aria-controls="x8-3" aria-selected="false"><img src="static/videos/x8_adobe_img_0017_thumb.jpg" alt="First frame of Adobe240 IMG_0017" width="341" height="192" loading="lazy" decoding="async"><span><b>Adobe240</b> IMG_0017 &middot; Fig.&nbsp;6</span></button>
+<button type="button" class="thumb" role="tab" id="x8-t4" aria-controls="x8-4" aria-selected="false"><img src="static/videos/x8_reds_003_thumb.jpg" alt="First frame of REDS 003" width="341" height="192" loading="lazy" decoding="async"><span><b>REDS</b> 003 &middot; Fig.&nbsp;6</span></button>
+<button type="button" class="thumb" role="tab" id="x8-t5" aria-controls="x8-5" aria-selected="false"><img src="static/videos/x8_davis_camel_thumb.jpg" alt="First frame of DAVIS camel" width="341" height="192" loading="lazy" decoding="async"><span><b>DAVIS</b> camel &middot; extra</span></button>
+</div>
+<button type="button" class="carousel-btn" data-next aria-label="Next video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+</div>
+</div>
+</div>
+        <p class="note">14 videos: the examples of Figs.&nbsp;3, 5, 6 and 7 and one more DAVIS sequence (camel). Method names, frame numbers and the playback speed are part of each video.</p>
+      </div>
+    </section>
+
+    <!-- ============ COMPONENTS: generation, re-rendering, fusion ============ -->
+    <section class="section section--band" id="components" aria-labelledby="components-title">
+      <div class="container container--wide">
+        <header class="section-head">
+          <h2 class="section-title" id="components-title">Generation, re-rendering and fusion</h2>
+          <p class="lead">One-step generation completes the motion; re-rendering brings back the observed pixels; fusion keeps the best of both. Each stage of the reconstruction on DAVIS car-turn, next to the ground truth.</p>
+        </header>
+<figure class="vcard" data-title="DAVIS &middot; car-turn &middot; &times;8 &middot; reconstruction stages" style="--ar: 1.0876">
+  <div class="vcard-media"><video data-src="static/videos/components_car-turn.mp4" data-poster="static/videos/components_car-turn.jpg" width="1416" height="1302" muted loop playsinline preload="none" aria-label="Reconstruction stages on DAVIS car-turn at x8: left and right observations, flow draft, generation, re-rendering, fusion without readback, the full reconstruction and the ground truth"></video><noscript><a href="static/videos/components_car-turn.mp4"><img src="static/videos/components_car-turn.jpg" alt="Reconstruction stages on DAVIS car-turn at x8: left and right observations, flow draft, generation, re-rendering, fusion without readback, the full reconstruction and the ground truth" loading="lazy"></a></noscript></div>
+  <figcaption class="vcard-bar"><p class="vcard-caption"><strong>DAVIS &middot; car-turn &middot; &times;8</strong>, the sequence of Fig.&nbsp;4. Top: left and right observations, flow draft, generation; bottom: re-rendering, fusion without readback, <span class="ours">full reconstruction</span>, GT.</p></figcaption>
+</figure>
+<figure class="figure">
+  <a class="figure-media zoom" href="static/images/components_full.jpg" data-title="Complementary roles of generation, re-rendering, and fusion on DAVIS car-turn (&amp;times;8, &amp;tau;&amp;nbsp;=&amp;nbsp;1/8).">
+    <img src="static/images/components_2000.jpg" srcset="static/images/components_1200.jpg 1200w, static/images/components_2000.jpg 2000w, static/images/components_full.jpg 2600w" sizes="(min-width: 1304px) 1240px, calc(100vw - 2 * clamp(16px, 4vw, 32px))" width="2000" height="591" loading="lazy" decoding="async" alt="Two rows of panels for the flow draft, generation, re-rendering, fusion without readback, the full reconstruction and the ground truth, with PSNR and LPIPS per panel and enlarged crops of the front tire and license plate">
+  </a>
+  <figcaption><span class="fig-label">Figure 4.</span> <b>Complementary roles of generation, re-rendering, and fusion on DAVIS car-turn (&times;8, &tau;&nbsp;=&nbsp;1/8).</b> The top row shows full frames with PSNR&uarr; / LPIPS&darr; computed over the entire image; the bottom enlarges the same cropped region for each output. Arrows highlight duplicated contours near the front tire and fine details around the license plate and headlight.</figcaption>
+</figure>
+        <div class="disclosures">
+        <details class="disclosure" id="ablation-table" data-animate>
+          <summary>Reconstruction ablations <span class="summary-sub">Table 3 &middot; SNU-FILM</span></summary>
+          <div class="disclosure-panel"><div class="disclosure-body">
+<figure class="table-figure" id="table-3">
+<figcaption><span class="fig-label">Table 3.</span> <b>Reconstruction ablations on SNU-FILM.</b> Scores follow the entire-video protocol. <b class="m-up">I</b><sup><span class="m-up">fs</span></sup>-reference rendering replaces <b class="m-up">I</b><sup><span class="m-up">gen</span></sup> with <b class="m-up">I</b><sup><span class="m-up">fs</span></sup> as the correspondence reference under fixed rendering settings. With the generator frozen, <i>Fusion w/o readback</i> and <i>Full reconstruction</i> are trained with the same training strategy.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 3 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th rowspan="2" scope="col" class="col-method">Output</th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×4</span></th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×8</span></th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×16</span></th></tr>
+<tr><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th></tr>
+</thead>
+<tbody>
+<tr><td class="col-method">Draft <b class="m-up">I</b><sup><span class="m-up">fs</span></sup></td><td class="grp-start num">35.15</td><td class="num">0.0374</td><td class="grp-start num">31.33</td><td class="num">0.0598</td><td class="grp-start num">27.12</td><td class="num">0.0966</td></tr>
+<tr><td class="col-method">Generation <b class="m-up">I</b><sup><span class="m-up">gen</span></sup> (<i>ℒ</i><sub><span class="m-up">latent</span></sub>)</td><td class="grp-start num">33.24</td><td class="num">0.0378</td><td class="grp-start num">30.35</td><td class="num">0.0599</td><td class="grp-start num">26.59</td><td class="num">0.0965</td></tr>
+<tr><td class="col-method">Generation <b class="m-up">I</b><sup><span class="m-up">gen</span></sup> (+<i>ℒ</i><sub><span class="m-up">pixel</span></sub>)</td><td class="grp-start num">34.83</td><td class="num">0.0286</td><td class="grp-start num">32.19</td><td class="num">0.0402</td><td class="grp-start num">28.03</td><td class="num">0.0676</td></tr>
+<tr><td class="col-method"><b class="m-up">I</b><sup><span class="m-up">fs</span></sup>-reference rendering</td><td class="grp-start num">35.07</td><td class="num">0.0358</td><td class="grp-start num">31.21</td><td class="num">0.0538</td><td class="grp-start num">26.89</td><td class="num">0.0888</td></tr>
+<tr><td class="col-method">Re-rendering <b class="m-up">I</b><sup><span class="m-up">warp</span></sup><sub><span class="m-up">rf</span></sub></td><td class="grp-start num">35.52</td><td class="num">0.0349</td><td class="grp-start num">31.93</td><td class="num">0.0519</td><td class="grp-start num">27.46</td><td class="num">0.0857</td></tr>
+<tr><td class="col-method">Fusion w/o readback</td><td class="grp-start num">36.84</td><td class="num">0.0228</td><td class="grp-start num">33.04</td><td class="num">0.0359</td><td class="grp-start num">28.22</td><td class="num">0.0646</td></tr>
+</tbody>
+<tbody>
+<tr class="ours"><td class="col-method"><b>Full reconstruction (Ours)</b></td><td class="grp-start num best">36.98</td><td class="num best">0.0198</td><td class="grp-start num best">33.31</td><td class="num best">0.0322</td><td class="grp-start num best">28.42</td><td class="num best">0.0604</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+          </div></div>
+        </details>
+        <details class="disclosure" id="fusion-table" data-animate>
+          <summary>Appearance fusion design <span class="summary-sub">Tables 4 and 10 &middot; LAVIB, SNU-FILM, Adobe240</span></summary>
+          <div class="disclosure-panel"><div class="disclosure-body">
+<figure class="table-figure" id="table-4">
+<figcaption><span class="fig-label">Table 4.</span> <b>Appearance fusion design.</b> Evaluation on 89 LAVIB parent videos, averaged over three paired training runs. Within each run, variants share the generator, inputs, pretrained U-Net body, and adaptation budget. The initial output is <b class="m-up">I</b><sub><span class="m-up">rf</span></sub><sup><span class="m-up">warp</span></sup> for free residual fusion and calibrated mixing for the other variants.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 4 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th rowspan="2" scope="col" class="col-method">Variant</th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×4</span></th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×8</span></th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×16</span></th></tr>
+<tr><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th></tr>
+</thead>
+<tbody>
+<tr><td class="col-method">Spatial mixing, no residual</td><td class="grp-start num">35.85</td><td class="num">0.0267</td><td class="grp-start num">32.80</td><td class="num">0.0393</td><td class="grp-start num">27.92</td><td class="num">0.0695</td></tr>
+<tr><td class="col-method">Fixed mixing maps + residual</td><td class="grp-start num">35.83</td><td class="num">0.0262</td><td class="grp-start num">32.77</td><td class="num">0.0405</td><td class="grp-start num">27.90</td><td class="num">0.0752</td></tr>
+<tr><td class="col-method">Free residual fusion</td><td class="grp-start num">35.86</td><td class="num">0.0253</td><td class="grp-start num">32.70</td><td class="num">0.0401</td><td class="grp-start num">27.82</td><td class="num">0.0768</td></tr>
+</tbody>
+<tbody>
+<tr class="ours"><td class="col-method"><b>Full reconstruction (Ours)</b></td><td class="grp-start num best">35.98</td><td class="num best">0.0240</td><td class="grp-start num best">32.85</td><td class="num best">0.0369</td><td class="grp-start num best">27.93</td><td class="num best">0.0676</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+<figure class="table-figure" id="table-10">
+<figcaption><span class="fig-label">Table 10.</span> <b>Fusion design on public benchmarks.</b> Three-run means on (a) SNU-FILM (31 clips) and (b) Adobe240 (17 sequences), using the heads from Table&nbsp;4 of the main paper without further adaptation.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span><span><span class="second">Underline</span> second best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 10 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th rowspan="2" scope="col" class="col-method">Variant</th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×4</span></th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×8</span></th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×16</span></th></tr>
+<tr><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th></tr>
+</thead>
+<tbody>
+<tr class="group"><td colspan="7"><span class="group-label"><b>(a) SNU-FILM</b></span></td></tr>
+<tr><td class="col-method">Spatial mixing, no residual</td><td class="grp-start num second">36.81</td><td class="num">0.0249</td><td class="grp-start num second">33.27</td><td class="num">0.0368</td><td class="grp-start num best">28.44</td><td class="num">0.0642</td></tr>
+<tr><td class="col-method">Fixed mixing maps + residual</td><td class="grp-start num">36.67</td><td class="num">0.0220</td><td class="grp-start num">33.16</td><td class="num">0.0349</td><td class="grp-start num">28.37</td><td class="num">0.0639</td></tr>
+<tr><td class="col-method">Free residual fusion</td><td class="grp-start num">36.75</td><td class="num second">0.0211</td><td class="grp-start num">33.11</td><td class="num second">0.0340</td><td class="grp-start num">28.31</td><td class="num second">0.0636</td></tr>
+<tr class="ours"><td class="col-method"><b>Full reconstruction (Ours)</b></td><td class="grp-start num best">36.95</td><td class="num best">0.0203</td><td class="grp-start num best">33.30</td><td class="num best">0.0325</td><td class="grp-start num second">28.42</td><td class="num best">0.0607</td></tr>
+</tbody>
+<tbody>
+<tr class="group"><td colspan="7"><span class="group-label"><b>(b) Adobe240</b></span></td></tr>
+<tr><td class="col-method">Spatial mixing, no residual</td><td class="grp-start num">35.21</td><td class="num">0.0280</td><td class="grp-start num">33.13</td><td class="num">0.0339</td><td class="grp-start num best">27.46</td><td class="num">0.0585</td></tr>
+<tr><td class="col-method">Fixed mixing maps + residual</td><td class="grp-start num">35.31</td><td class="num second">0.0235</td><td class="grp-start num">33.16</td><td class="num">0.0301</td><td class="grp-start num">27.43</td><td class="num">0.0558</td></tr>
+<tr><td class="col-method">Free residual fusion</td><td class="grp-start num second">35.36</td><td class="num best">0.0230</td><td class="grp-start num second">33.18</td><td class="num second">0.0294</td><td class="grp-start num">27.41</td><td class="num second">0.0550</td></tr>
+<tr class="ours"><td class="col-method"><b>Full reconstruction (Ours)</b></td><td class="grp-start num best">35.39</td><td class="num best">0.0230</td><td class="grp-start num best">33.22</td><td class="num best">0.0292</td><td class="grp-start num second">27.44</td><td class="num best">0.0544</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+          </div></div>
+        </details>
+        <details class="disclosure" id="draft-table" data-animate>
+          <summary>Linear versus flow-rendered draft <span class="summary-sub">Table 7 &middot; LAVIB</span></summary>
+          <div class="disclosure-panel"><div class="disclosure-body">
+<figure class="table-figure" id="table-7">
+<figcaption><span class="fig-label">Table 7.</span> <b>Linear versus flow-rendered draft initialization.</b> Results on 48 held-out LAVIB parent videos. Generated rows use 5k latent-stage updates only (one run per source); output differences are draft minus linear.</figcaption>
+<div class="table-meta table-meta--hint"><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 7 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th scope="col" class="col-method">Output</th><th scope="col" class="metric grp-start">Metric</th><th scope="col" class="metric grp-start">×2</th><th scope="col" class="metric grp-start">×4</th><th scope="col" class="metric grp-start">×8</th><th scope="col" class="metric grp-start">×16</th></tr>
+</thead>
+<tbody>
+<tr><td class="col-method" rowspan="2">Linear source<br>(input)</td><td class="grp-start num">PSNR↑</td><td class="grp-start num">28.19</td><td class="grp-start num">25.12</td><td class="grp-start num">22.64</td><td class="grp-start num">20.45</td></tr>
+<tr><td class="grp-start num">LPIPS↓</td><td class="grp-start num">0.1058</td><td class="grp-start num">0.1161</td><td class="grp-start num">0.1550</td><td class="grp-start num">0.2192</td></tr>
+<tr><td class="col-method" rowspan="2">Generated from<br>linear source</td><td class="grp-start num">PSNR↑</td><td class="grp-start num">30.31</td><td class="grp-start num">28.45</td><td class="grp-start num">27.82</td><td class="grp-start num">24.79</td></tr>
+<tr><td class="grp-start num">LPIPS↓</td><td class="grp-start num">0.0674</td><td class="grp-start num">0.0769</td><td class="grp-start num">0.0871</td><td class="grp-start num">0.1255</td></tr>
+<tr><td class="col-method" rowspan="2">Flow-rendered draft <b class="m-up">I</b><sup><span class="m-up">fs</span></sup><br>(input)</td><td class="grp-start num">PSNR↑</td><td class="grp-start num">37.61</td><td class="grp-start num">35.31</td><td class="grp-start num">32.11</td><td class="grp-start num">26.68</td></tr>
+<tr><td class="grp-start num">LPIPS↓</td><td class="grp-start num">0.0262</td><td class="grp-start num">0.0350</td><td class="grp-start num">0.0554</td><td class="grp-start num">0.1116</td></tr>
+<tr><td class="col-method" rowspan="2">Generated from <b class="m-up">I</b><sup><span class="m-up">fs</span></sup></td><td class="grp-start num">PSNR↑</td><td class="grp-start num">35.60</td><td class="grp-start num">33.95</td><td class="grp-start num">31.35</td><td class="grp-start num">26.36</td></tr>
+<tr><td class="grp-start num">LPIPS↓</td><td class="grp-start num">0.0258</td><td class="grp-start num">0.0351</td><td class="grp-start num">0.0561</td><td class="grp-start num">0.1122</td></tr>
+</tbody>
+<tbody>
+<tr class="ours"><td class="col-method" rowspan="2">Generated-output<br>difference</td><td class="grp-start num">ΔPSNR</td><td class="grp-start num best">+5.29</td><td class="grp-start num best">+5.50</td><td class="grp-start num best">+3.53</td><td class="grp-start num best">+1.57</td></tr>
+<tr class="ours"><td class="grp-start num">ΔLPIPS</td><td class="grp-start num best"><span class="neg">-</span>0.0416</td><td class="grp-start num best"><span class="neg">-</span>0.0418</td><td class="grp-start num best"><span class="neg">-</span>0.0310</td><td class="grp-start num best"><span class="neg">-</span>0.0133</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+          </div></div>
+        </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAPER FIGURES ============ -->
+    <section class="section" id="figures" aria-labelledby="figures-title">
+      <div class="container container--wide">
+        <header class="section-head">
+          <h2 class="section-title" id="figures-title">Paper figures</h2>
+          <p class="lead">The qualitative comparisons of the paper at &times;16 and &times;8 on SNU-FILM, DAVIS, Adobe240 and REDS, and seven target times between two keyframes.</p>
+        </header>
+<div class="carousel fig-carousel" data-switch>
+<div class="carousel-nav">
+<button type="button" class="carousel-btn" data-prev aria-label="Previous figure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+<div class="thumbs hscroll thumbs--fig" role="tablist" aria-label="Qualitative figures">
+<button type="button" class="thumb" role="tab" id="fig-t1" aria-controls="fig-1" aria-selected="true"><img src="static/images/qualitative_thumb.jpg" alt="Thumbnail of Figure 3" width="480" height="368" loading="lazy" decoding="async"><span><b>Fig. 3</b> Comparisons at &times;16</span></button>
+<button type="button" class="thumb" role="tab" id="fig-t2" aria-controls="fig-2" aria-selected="false"><img src="static/images/times_thumb.jpg" alt="Thumbnail of Figure 5" width="480" height="566" loading="lazy" decoding="async"><span><b>Fig. 5</b> Multiple target times</span></button>
+<button type="button" class="thumb" role="tab" id="fig-t3" aria-controls="fig-3" aria-selected="false"><img src="static/images/supp_x8_thumb.jpg" alt="Thumbnail of Figure 6" width="480" height="448" loading="lazy" decoding="async"><span><b>Fig. 6</b> Four datasets at &times;8</span></button>
+<button type="button" class="thumb" role="tab" id="fig-t4" aria-controls="fig-4" aria-selected="false"><img src="static/images/supp_x16_thumb.jpg" alt="Thumbnail of Figure 7" width="480" height="447" loading="lazy" decoding="async"><span><b>Fig. 7</b> Four datasets at &times;16</span></button>
+</div>
+<button type="button" class="carousel-btn" data-next aria-label="Next figure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+<div class="slides">
+<figure class="figure slide" id="fig-1" role="tabpanel" aria-labelledby="fig-t1">
+  <a class="figure-media zoom" href="static/images/qualitative_full.jpg" data-title="Qualitative comparisons at &amp;times;16.">
+    <img src="static/images/qualitative_2000.jpg" srcset="static/images/qualitative_1200.jpg 1200w, static/images/qualitative_2000.jpg 2000w, static/images/qualitative_2800.jpg 2800w" sizes="(min-width: 1304px) 1240px, calc(100vw - 2 * clamp(16px, 4vw, 32px))" width="2000" height="1532" loading="lazy" decoding="async" alt="Four examples, one per row pair: SNU-FILM 0017 and 0018, DAVIS motorbike and car-roundabout, each with the overlaid inputs, FILM, GIMM-VFI, MoMo, SPEED, LDF-VFI, RePix-VFI and the ground truth, full frames and enlarged crops">
+  </a>
+  <figcaption><span class="fig-label">Figure 3.</span> <b>Qualitative comparisons at &times;16.</b> The top two examples are from SNU-FILM and the bottom two from DAVIS, all at the midpoint between observed keyframes (&tau;&nbsp;=&nbsp;8/16). The first column shows an equal-weight overlay of the bounding observations; subsequent columns show predictions and GT. Boxes indicate the regions enlarged below.</figcaption>
+</figure>
+<figure class="figure slide" id="fig-2" role="tabpanel" aria-labelledby="fig-t2" hidden>
+  <a class="figure-media zoom" href="static/images/times_full.jpg" data-title="Multiple target times on DAVIS motorbike at &amp;times;16.">
+    <img src="static/images/times_2000.jpg" srcset="static/images/times_1200.jpg 1200w, static/images/times_2000.jpg 2000w, static/images/times_2800.jpg 2800w" sizes="(min-width: 1304px) 1240px, calc(100vw - 2 * clamp(16px, 4vw, 32px))" width="2000" height="2358" loading="lazy" decoding="async" alt="A grid of crops: seven target times by row and the methods and ground truth by column, on the motorbike sequence">
+  </a>
+  <figcaption><span class="fig-label">Figure 5.</span> <b>Multiple target times on DAVIS motorbike at &times;16.</b> Targets 00018&ndash;00030 in steps of two lie between observed keyframes 00016 and 00032 (&tau;&nbsp;=&nbsp;0.125, 0.250, &hellip;, 0.875). The first column shows an equal-weight overlay of the bounding observations. All methods and target times use the same fixed crop.</figcaption>
+</figure>
+<figure class="figure slide" id="fig-3" role="tabpanel" aria-labelledby="fig-t3" hidden>
+  <a class="figure-media zoom" href="static/images/supp_x8_full.jpg" data-title="Qualitative comparisons at &amp;times;8.">
+    <img src="static/images/supp_x8_2000.jpg" srcset="static/images/supp_x8_1200.jpg 1200w, static/images/supp_x8_2000.jpg 2000w, static/images/supp_x8_2800.jpg 2800w" sizes="(min-width: 1304px) 1240px, calc(100vw - 2 * clamp(16px, 4vw, 32px))" width="2000" height="1867" loading="lazy" decoding="async" alt="Four examples at x8, one per dataset, each with the overlaid inputs, the baselines, RePix-VFI and the ground truth">
+  </a>
+  <figcaption><span class="fig-label">Figure 6.</span> <b>Qualitative comparisons at &times;8.</b> Midpoint targets (&tau;&nbsp;=&nbsp;0.5) from SNU-FILM, DAVIS, Adobe240, and REDS, from top to bottom. The first column shows an equal-weight overlay of the bounding observations; subsequent columns show predictions and GT. Boxes indicate the regions enlarged below.</figcaption>
+</figure>
+<figure class="figure slide" id="fig-4" role="tabpanel" aria-labelledby="fig-t4" hidden>
+  <a class="figure-media zoom" href="static/images/supp_x16_full.jpg" data-title="Qualitative comparisons at &amp;times;16.">
+    <img src="static/images/supp_x16_2000.jpg" srcset="static/images/supp_x16_1200.jpg 1200w, static/images/supp_x16_2000.jpg 2000w, static/images/supp_x16_2800.jpg 2800w" sizes="(min-width: 1304px) 1240px, calc(100vw - 2 * clamp(16px, 4vw, 32px))" width="2000" height="1862" loading="lazy" decoding="async" alt="Four examples at x16, one per dataset, each with the overlaid inputs, the baselines, RePix-VFI and the ground truth">
+  </a>
+  <figcaption><span class="fig-label">Figure 7.</span> <b>Qualitative comparisons at &times;16.</b> Midpoint targets (&tau;&nbsp;=&nbsp;0.5) from SNU-FILM, DAVIS, Adobe240, and REDS, from top to bottom. The first column shows an equal-weight overlay of the bounding observations; subsequent columns show predictions and GT. Boxes indicate the regions enlarged below.</figcaption>
+</figure>
+</div>
+</div>
+      </div>
+    </section>
+
+    <!-- ============ QUANTITATIVE RESULTS ============ -->
+    <section class="section section--band" id="results" aria-labelledby="results-title">
+      <div class="container container--wide">
+        <header class="section-head">
+          <h2 class="section-title" id="results-title">Quantitative results</h2>
+          <p class="lead">On SNU-FILM at &times;8 and &times;16, the highest PSNR and the lowest LPIPS, FloLPIPS and tOF among the compared methods: <b>+1.71</b> and <b>+1.48&nbsp;dB</b> PSNR over the best diffusion-based baseline, and <b>32&ndash;42&times;</b> faster than the state-of-the-art multi-frame VFI diffusion model.</p>
+        </header>
+<div data-switch>
+<div class="switchbar switchbar--center">
+<div class="tablist" role="tablist" aria-label="Benchmark"><button type="button" class="tab" role="tab" id="res-tab-snu" aria-controls="res-snu" aria-selected="true">SNU-FILM<small>Table 1</small></button><button type="button" class="tab" role="tab" id="res-tab-davis" aria-controls="res-davis" aria-selected="false">DAVIS<small>Table 2</small></button><button type="button" class="tab" role="tab" id="res-tab-adobe" aria-controls="res-adobe" aria-selected="false">Adobe240<small>Table 15</small></button><button type="button" class="tab" role="tab" id="res-tab-reds" aria-controls="res-reds" aria-selected="false">REDS<small>Table 14</small></button></div>
+</div>
+<div class="seg-panel" role="tabpanel" id="res-snu" aria-labelledby="res-tab-snu">
+<figure class="table-figure" id="table-1">
+<figcaption><span class="fig-label">Table 1.</span> <b>Quantitative comparison on SNU-FILM under the entire-video protocol.</b> Frame metrics are evaluated on missing frames from 31 clips; tOF uses all adjacent frame pairs, including observed-frame transitions. Scores are averaged equally over clips. NFE is reported per synthesized frame, except per chunk for LDF-VFI and per window for RePix-VFI. Midpoint-only methods are applied recursively.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span><span><span class="second">Underline</span> second best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 1 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th rowspan="2" scope="col" class="col-method">Method</th><th rowspan="2" scope="col" class="col-venue">Venue</th><th rowspan="2" scope="col" class="metric grp-start">NFE</th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>SNU-FILM ×4</span></th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>SNU-FILM ×8</span></th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>SNU-FILM ×16</span></th></tr>
+<tr><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th></tr>
+</thead>
+<tbody>
+<tr class="group"><td colspan="18"><span class="group-label"><i>Non-diffusion</i></span></td></tr>
+<tr><td class="col-method">FILM</td><td class="col-venue">ECCV'22</td><td class="grp-start num">1</td><td class="grp-start num">36.62</td><td class="num">0.9815</td><td class="num">0.0186</td><td class="num best">0.0300</td><td class="num">0.2856</td><td class="grp-start num">31.91</td><td class="num">0.9501</td><td class="num">0.0344</td><td class="num second">0.0565</td><td class="num">0.4129</td><td class="grp-start num">27.07</td><td class="num">0.8879</td><td class="num">0.0680</td><td class="num">0.1094</td><td class="num">0.6814</td></tr>
+<tr><td class="col-method">RIFE</td><td class="col-venue">ECCV'22</td><td class="grp-start num">1</td><td class="grp-start num">35.72</td><td class="num">0.9790</td><td class="num">0.0211</td><td class="num">0.0340</td><td class="num">0.3248</td><td class="grp-start num">31.19</td><td class="num">0.9479</td><td class="num">0.0364</td><td class="num">0.0618</td><td class="num">0.4601</td><td class="grp-start num">26.59</td><td class="num">0.8854</td><td class="num">0.0678</td><td class="num">0.1114</td><td class="num">0.7617</td></tr>
+<tr><td class="col-method">AMT</td><td class="col-venue">CVPR'23</td><td class="grp-start num">1</td><td class="grp-start num">36.73</td><td class="num">0.9823</td><td class="num">0.0291</td><td class="num">0.0470</td><td class="num">0.3766</td><td class="grp-start num">32.04</td><td class="num">0.9525</td><td class="num">0.0495</td><td class="num">0.0855</td><td class="num">0.5086</td><td class="grp-start num">27.11</td><td class="num">0.8926</td><td class="num">0.0971</td><td class="num">0.1659</td><td class="num">0.7852</td></tr>
+<tr><td class="col-method">EMA-VFI</td><td class="col-venue">CVPR'23</td><td class="grp-start num">1</td><td class="grp-start num">36.63</td><td class="num">0.9827</td><td class="num">0.0296</td><td class="num">0.0492</td><td class="num">0.2924</td><td class="grp-start num">32.27</td><td class="num">0.9543</td><td class="num">0.0496</td><td class="num">0.0840</td><td class="num">0.4073</td><td class="grp-start num">27.53</td><td class="num">0.8962</td><td class="num">0.0914</td><td class="num">0.1537</td><td class="num">0.6055</td></tr>
+<tr><td class="col-method">GIMM-VFI</td><td class="col-venue">NeurIPS'24</td><td class="grp-start num">1</td><td class="grp-start num second">36.88</td><td class="num second">0.9828</td><td class="num">0.0336</td><td class="num">0.0527</td><td class="num second">0.2811</td><td class="grp-start num second">32.45</td><td class="num second">0.9554</td><td class="num">0.0607</td><td class="num">0.0970</td><td class="num second">0.3947</td><td class="grp-start num second">27.78</td><td class="num best">0.9016</td><td class="num">0.1118</td><td class="num">0.1762</td><td class="num second">0.5674</td></tr>
+<tr><td class="col-method">InterpAny</td><td class="col-venue">ECCV'24</td><td class="grp-start num">2</td><td class="grp-start num">36.24</td><td class="num">0.9809</td><td class="num">0.0278</td><td class="num">0.0477</td><td class="num">0.3246</td><td class="grp-start num">31.60</td><td class="num">0.9496</td><td class="num">0.0510</td><td class="num">0.0926</td><td class="num">0.4807</td><td class="grp-start num">26.98</td><td class="num">0.8898</td><td class="num">0.1036</td><td class="num">0.1717</td><td class="num">0.7592</td></tr>
+<tr><td class="col-method">BiM-VFI</td><td class="col-venue">CVPR'25</td><td class="grp-start num">1</td><td class="grp-start num">36.43</td><td class="num">0.9812</td><td class="num">0.0230</td><td class="num">0.0371</td><td class="num">0.3265</td><td class="grp-start num">31.69</td><td class="num">0.9493</td><td class="num">0.0394</td><td class="num">0.0650</td><td class="num">0.4713</td><td class="grp-start num">26.95</td><td class="num">0.8886</td><td class="num">0.0712</td><td class="num">0.1149</td><td class="num">0.6522</td></tr>
+<tr><td class="col-method">VTinker</td><td class="col-venue">AAAI'26</td><td class="grp-start num">1</td><td class="grp-start num">36.04</td><td class="num">0.9805</td><td class="num">0.0186</td><td class="num second">0.0306</td><td class="num">0.2902</td><td class="grp-start num">31.67</td><td class="num">0.9492</td><td class="num">0.0340</td><td class="num">0.0569</td><td class="num">0.4141</td><td class="grp-start num">27.07</td><td class="num">0.8890</td><td class="num second">0.0652</td><td class="num second">0.1072</td><td class="num">0.6186</td></tr>
+</tbody>
+<tbody>
+<tr class="group"><td colspan="18"><span class="group-label"><i>Diffusion-based</i></span></td></tr>
+<tr><td class="col-method">LDMVFI</td><td class="col-venue">AAAI'24</td><td class="grp-start num">200</td><td class="grp-start num">34.79</td><td class="num">0.9746</td><td class="num">0.0249</td><td class="num">0.0450</td><td class="num">0.3408</td><td class="grp-start num">30.15</td><td class="num">0.9364</td><td class="num">0.0480</td><td class="num">0.0877</td><td class="num">0.5340</td><td class="grp-start num">25.86</td><td class="num">0.8727</td><td class="num">0.0923</td><td class="num">0.1521</td><td class="num">0.8668</td></tr>
+<tr><td class="col-method">CBBD</td><td class="col-venue">MM'24</td><td class="grp-start num">50</td><td class="grp-start num">35.95</td><td class="num">0.9799</td><td class="num">0.0194</td><td class="num">0.0339</td><td class="num">0.3000</td><td class="grp-start num">31.02</td><td class="num">0.9451</td><td class="num">0.0390</td><td class="num">0.0721</td><td class="num">0.5148</td><td class="grp-start num">26.20</td><td class="num">0.8779</td><td class="num">0.0828</td><td class="num">0.1371</td><td class="num">0.9153</td></tr>
+<tr><td class="col-method">MoMo</td><td class="col-venue">AAAI'25</td><td class="grp-start num">8</td><td class="grp-start num">36.20</td><td class="num">0.9801</td><td class="num best">0.0178</td><td class="num best">0.0300</td><td class="num">0.3011</td><td class="grp-start num">31.60</td><td class="num">0.9480</td><td class="num second">0.0336</td><td class="num">0.0577</td><td class="num">0.4207</td><td class="grp-start num">26.94</td><td class="num">0.8869</td><td class="num">0.0663</td><td class="num">0.1110</td><td class="num">0.6247</td></tr>
+<tr><td class="col-method">EDEN</td><td class="col-venue">CVPR'25</td><td class="grp-start num">2</td><td class="grp-start num">35.44</td><td class="num">0.9780</td><td class="num">0.0203</td><td class="num">0.0372</td><td class="num">0.2913</td><td class="grp-start num">31.14</td><td class="num">0.9462</td><td class="num">0.0392</td><td class="num">0.0708</td><td class="num">0.4185</td><td class="grp-start num">26.91</td><td class="num">0.8885</td><td class="num">0.0768</td><td class="num">0.1276</td><td class="num">0.6337</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="col-venue">ICCV'25</td><td class="grp-start num">10</td><td class="grp-start num">35.94</td><td class="num">0.9802</td><td class="num second">0.0182</td><td class="num">0.0316</td><td class="num">0.3092</td><td class="grp-start num">30.96</td><td class="num">0.9455</td><td class="num">0.0367</td><td class="num">0.0686</td><td class="num">0.5193</td><td class="grp-start num">26.49</td><td class="num">0.8820</td><td class="num">0.0742</td><td class="num">0.1152</td><td class="num">0.7655</td></tr>
+<tr><td class="col-method">SPEED</td><td class="col-venue">MM'26</td><td class="grp-start num">1</td><td class="grp-start num">34.37</td><td class="num">0.9721</td><td class="num">0.0257</td><td class="num">0.0391</td><td class="num">0.2888</td><td class="grp-start num">30.70</td><td class="num">0.9420</td><td class="num">0.0430</td><td class="num">0.0703</td><td class="num">0.4086</td><td class="grp-start num">26.78</td><td class="num">0.8857</td><td class="num">0.0752</td><td class="num">0.1196</td><td class="num">0.5770</td></tr>
+<tr><td class="col-method">LDF-VFI</td><td class="col-venue">CVPR'26</td><td class="grp-start num">16</td><td class="grp-start num">33.47</td><td class="num">0.9670</td><td class="num">0.0320</td><td class="num">0.0428</td><td class="num">0.3133</td><td class="grp-start num">30.79</td><td class="num">0.9442</td><td class="num">0.0452</td><td class="num">0.0634</td><td class="num">0.4099</td><td class="grp-start num">26.39</td><td class="num">0.8794</td><td class="num">0.0783</td><td class="num">0.1160</td><td class="num">0.5911</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="col-venue na">&ndash;</td><td class="grp-start num">1</td><td class="grp-start num best">36.98</td><td class="num best">0.9842</td><td class="num">0.0198</td><td class="num">0.0310</td><td class="num best">0.2474</td><td class="grp-start num best">33.31</td><td class="num best">0.9628</td><td class="num best">0.0322</td><td class="num best">0.0493</td><td class="num best">0.3490</td><td class="grp-start num best">28.42</td><td class="num second">0.9014</td><td class="num best">0.0604</td><td class="num best">0.0871</td><td class="num best">0.5400</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+</div>
+<div class="seg-panel" role="tabpanel" id="res-davis" aria-labelledby="res-tab-davis" hidden>
+<figure class="table-figure" id="table-2">
+<figcaption><span class="fig-label">Table 2.</span> <b>Quantitative comparison on DAVIS 2016.</b> PSNR and LPIPS are evaluated on missing frames from all 50 sequences at their native resolutions and averaged equally over sequences.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span><span><span class="second">Underline</span> second best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 2 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th rowspan="2" scope="col" class="col-method">Method</th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×4</span></th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×8</span></th><th colspan="2" scope="colgroup" class="col-group grp-start"><span>×16</span></th></tr>
+<tr><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th></tr>
+</thead>
+<tbody>
+<tr><td class="col-method">GIMM-VFI</td><td class="grp-start num second">23.81</td><td class="num">0.2737</td><td class="grp-start num second">20.59</td><td class="num">0.3903</td><td class="grp-start num">18.22</td><td class="num">0.5046</td></tr>
+<tr><td class="col-method">BiM-VFI</td><td class="grp-start num">22.86</td><td class="num second">0.1643</td><td class="grp-start num">19.71</td><td class="num second">0.2451</td><td class="grp-start num">17.40</td><td class="num second">0.3413</td></tr>
+<tr><td class="col-method">VTinker</td><td class="grp-start num">22.71</td><td class="num">0.1742</td><td class="grp-start num">19.47</td><td class="num">0.2680</td><td class="grp-start num">17.39</td><td class="num">0.3575</td></tr>
+<tr><td class="col-method">MoMo</td><td class="grp-start num">22.50</td><td class="num">0.1718</td><td class="grp-start num">19.33</td><td class="num">0.2638</td><td class="grp-start num">17.26</td><td class="num">0.3523</td></tr>
+<tr><td class="col-method">EDEN</td><td class="grp-start num">22.34</td><td class="num">0.3260</td><td class="grp-start num">20.06</td><td class="num">0.4239</td><td class="grp-start num second">18.38</td><td class="num">0.4940</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="grp-start num">20.62</td><td class="num">0.2367</td><td class="grp-start num">18.30</td><td class="num">0.3097</td><td class="grp-start num">17.14</td><td class="num">0.3630</td></tr>
+<tr><td class="col-method">LDF-VFI</td><td class="grp-start num">22.74</td><td class="num">0.2444</td><td class="grp-start num">20.11</td><td class="num">0.3055</td><td class="grp-start num">17.71</td><td class="num">0.3974</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="grp-start num best">24.56</td><td class="num best">0.1422</td><td class="grp-start num best">21.64</td><td class="num best">0.2099</td><td class="grp-start num best">19.17</td><td class="num best">0.2962</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+</div>
+<div class="seg-panel" role="tabpanel" id="res-adobe" aria-labelledby="res-tab-adobe" hidden>
+<figure class="table-figure" id="table-15">
+<figcaption><span class="fig-label">Table 15.</span> <b>Quantitative comparison on Adobe240.</b> Evaluation on all 17 test sequences at native 1280&times;720.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span><span><span class="second">Underline</span> second best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 15 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th rowspan="2" scope="col" class="col-method">Method</th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>Adobe240 ×4</span></th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>Adobe240 ×8</span></th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>Adobe240 ×16</span></th></tr>
+<tr><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th></tr>
+</thead>
+<tbody>
+<tr class="group"><td colspan="16"><span class="group-label"><i>Non-diffusion</i></span></td></tr>
+<tr><td class="col-method">FILM</td><td class="grp-start num">34.89</td><td class="num">0.9730</td><td class="num second">0.0225</td><td class="num">0.0248</td><td class="num">1.0921</td><td class="grp-start num">31.57</td><td class="num">0.9460</td><td class="num">0.0326</td><td class="num">0.0366</td><td class="num">1.1693</td><td class="grp-start num">26.07</td><td class="num">0.8592</td><td class="num">0.0629</td><td class="num">0.0734</td><td class="num">1.3693</td></tr>
+<tr><td class="col-method">RIFE</td><td class="grp-start num">34.00</td><td class="num">0.9685</td><td class="num">0.0256</td><td class="num">0.0277</td><td class="num">1.1484</td><td class="grp-start num">30.93</td><td class="num">0.9421</td><td class="num">0.0348</td><td class="num">0.0384</td><td class="num">1.2311</td><td class="grp-start num">25.74</td><td class="num">0.8575</td><td class="num">0.0624</td><td class="num">0.0699</td><td class="num">1.4789</td></tr>
+<tr><td class="col-method">AMT</td><td class="grp-start num">34.99</td><td class="num">0.9738</td><td class="num">0.0308</td><td class="num">0.0360</td><td class="num">1.1750</td><td class="grp-start num">31.63</td><td class="num">0.9473</td><td class="num">0.0437</td><td class="num">0.0523</td><td class="num">1.2454</td><td class="grp-start num">26.16</td><td class="num">0.8630</td><td class="num">0.0838</td><td class="num">0.1051</td><td class="num">1.5145</td></tr>
+<tr><td class="col-method">GIMM-VFI</td><td class="grp-start num second">35.10</td><td class="num second">0.9746</td><td class="num">0.0332</td><td class="num">0.0377</td><td class="num">1.0876</td><td class="grp-start num second">31.93</td><td class="num second">0.9506</td><td class="num">0.0475</td><td class="num">0.0536</td><td class="num second">1.1574</td><td class="grp-start num second">26.72</td><td class="num second">0.8740</td><td class="num">0.0896</td><td class="num">0.0986</td><td class="num second">1.2916</td></tr>
+<tr><td class="col-method">InterpAny</td><td class="grp-start num">34.57</td><td class="num">0.9717</td><td class="num">0.0300</td><td class="num">0.0367</td><td class="num">1.1427</td><td class="grp-start num">31.26</td><td class="num">0.9446</td><td class="num">0.0438</td><td class="num">0.0551</td><td class="num">1.2211</td><td class="grp-start num">25.95</td><td class="num">0.8616</td><td class="num">0.0865</td><td class="num">0.1056</td><td class="num">1.4323</td></tr>
+<tr><td class="col-method">BiM-VFI</td><td class="grp-start num">34.88</td><td class="num">0.9730</td><td class="num">0.0253</td><td class="num">0.0282</td><td class="num">1.1210</td><td class="grp-start num">31.52</td><td class="num">0.9454</td><td class="num">0.0349</td><td class="num">0.0392</td><td class="num">1.2054</td><td class="grp-start num">26.13</td><td class="num">0.8598</td><td class="num">0.0632</td><td class="num">0.0708</td><td class="num">1.3493</td></tr>
+<tr><td class="col-method">VTinker</td><td class="grp-start num">34.57</td><td class="num">0.9719</td><td class="num second">0.0225</td><td class="num">0.0249</td><td class="num">1.1082</td><td class="grp-start num">31.39</td><td class="num">0.9451</td><td class="num">0.0323</td><td class="num second">0.0358</td><td class="num">1.1775</td><td class="grp-start num">26.18</td><td class="num">0.8607</td><td class="num second">0.0600</td><td class="num second">0.0675</td><td class="num">1.3280</td></tr>
+<tr><td class="col-method">EMA-VFI</td><td class="grp-start num">34.92</td><td class="num">0.9735</td><td class="num">0.0311</td><td class="num">0.0364</td><td class="num">1.1053</td><td class="grp-start num">31.76</td><td class="num">0.9483</td><td class="num">0.0421</td><td class="num">0.0490</td><td class="num">1.1714</td><td class="grp-start num">26.39</td><td class="num">0.8664</td><td class="num">0.0770</td><td class="num">0.0909</td><td class="num">1.3411</td></tr>
+</tbody>
+<tbody>
+<tr class="group"><td colspan="16"><span class="group-label"><i>Diffusion-based</i></span></td></tr>
+<tr><td class="col-method">LDMVFI</td><td class="grp-start num">34.00</td><td class="num">0.9671</td><td class="num">0.0273</td><td class="num">0.0311</td><td class="num">1.1343</td><td class="grp-start num">30.42</td><td class="num">0.9327</td><td class="num">0.0445</td><td class="num">0.0524</td><td class="num">1.2819</td><td class="grp-start num">25.26</td><td class="num">0.8420</td><td class="num">0.0856</td><td class="num">0.0995</td><td class="num">1.5250</td></tr>
+<tr><td class="col-method">CBBD</td><td class="grp-start num">34.54</td><td class="num">0.9711</td><td class="num">0.0235</td><td class="num">0.0267</td><td class="num">1.1121</td><td class="grp-start num">31.03</td><td class="num">0.9408</td><td class="num">0.0366</td><td class="num">0.0456</td><td class="num">1.2806</td><td class="grp-start num">25.46</td><td class="num">0.8495</td><td class="num">0.0746</td><td class="num">0.0919</td><td class="num">1.5791</td></tr>
+<tr><td class="col-method">MoMo</td><td class="grp-start num">34.69</td><td class="num">0.9718</td><td class="num best">0.0219</td><td class="num best">0.0242</td><td class="num second">1.0868</td><td class="grp-start num">31.41</td><td class="num">0.9444</td><td class="num second">0.0320</td><td class="num">0.0359</td><td class="num">1.1657</td><td class="grp-start num">26.08</td><td class="num">0.8584</td><td class="num">0.0606</td><td class="num">0.0691</td><td class="num">1.3151</td></tr>
+<tr><td class="col-method">EDEN</td><td class="grp-start num">34.64</td><td class="num">0.9713</td><td class="num">0.0231</td><td class="num">0.0251</td><td class="num">1.1007</td><td class="grp-start num">31.40</td><td class="num">0.9436</td><td class="num">0.0359</td><td class="num">0.0396</td><td class="num">1.1899</td><td class="grp-start num">26.33</td><td class="num">0.8625</td><td class="num">0.0704</td><td class="num">0.0775</td><td class="num">1.3598</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="grp-start num">34.47</td><td class="num">0.9712</td><td class="num second">0.0225</td><td class="num">0.0253</td><td class="num">1.1234</td><td class="grp-start num">30.99</td><td class="num">0.9411</td><td class="num">0.0350</td><td class="num">0.0436</td><td class="num">1.2888</td><td class="grp-start num">25.69</td><td class="num">0.8559</td><td class="num">0.0688</td><td class="num">0.0795</td><td class="num">1.4191</td></tr>
+<tr><td class="col-method">SPEED</td><td class="grp-start num">33.64</td><td class="num">0.9664</td><td class="num">0.0265</td><td class="num">0.0281</td><td class="num">1.0994</td><td class="grp-start num">30.82</td><td class="num">0.9401</td><td class="num">0.0383</td><td class="num">0.0412</td><td class="num">1.1731</td><td class="grp-start num">26.10</td><td class="num">0.8606</td><td class="num">0.0676</td><td class="num">0.0733</td><td class="num">1.3114</td></tr>
+<tr><td class="col-method">LDF-VFI</td><td class="grp-start num">32.54</td><td class="num">0.9606</td><td class="num">0.0335</td><td class="num">0.0369</td><td class="num">1.1376</td><td class="grp-start num">30.76</td><td class="num">0.9441</td><td class="num">0.0406</td><td class="num">0.0447</td><td class="num">1.2109</td><td class="grp-start num">25.97</td><td class="num">0.8660</td><td class="num">0.0671</td><td class="num">0.0726</td><td class="num">1.3626</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="grp-start num best">35.40</td><td class="num best">0.9753</td><td class="num">0.0228</td><td class="num second">0.0247</td><td class="num best">1.0738</td><td class="grp-start num best">33.22</td><td class="num best">0.9610</td><td class="num best">0.0289</td><td class="num best">0.0318</td><td class="num best">1.1146</td><td class="grp-start num best">27.42</td><td class="num best">0.8840</td><td class="num best">0.0541</td><td class="num best">0.0577</td><td class="num best">1.2586</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+</div>
+<div class="seg-panel" role="tabpanel" id="res-reds" aria-labelledby="res-tab-reds" hidden>
+<figure class="table-figure" id="table-14">
+<figcaption><span class="fig-label">Table 14.</span> <b>Quantitative comparison on REDS.</b> Evaluation on all 30 official 120-fps validation sequences at native 1280&times;720.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span><span><span class="second">Underline</span> second best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 14 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th rowspan="2" scope="col" class="col-method">Method</th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>REDS ×4</span></th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>REDS ×8</span></th><th colspan="5" scope="colgroup" class="col-group grp-start"><span>REDS ×16</span></th></tr>
+<tr><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric">tOF<span class="arrow">↓</span></th></tr>
+</thead>
+<tbody>
+<tr class="group"><td colspan="16"><span class="group-label"><i>Non-diffusion</i></span></td></tr>
+<tr><td class="col-method">FILM</td><td class="grp-start num">29.90</td><td class="num">0.8963</td><td class="num">0.0369</td><td class="num">0.0397</td><td class="num">0.5516</td><td class="grp-start num">24.21</td><td class="num">0.7542</td><td class="num">0.0752</td><td class="num">0.0822</td><td class="num">1.0115</td><td class="grp-start num">20.69</td><td class="num">0.6471</td><td class="num">0.1382</td><td class="num">0.1573</td><td class="num">1.5903</td></tr>
+<tr><td class="col-method">RIFE</td><td class="grp-start num">29.09</td><td class="num">0.8891</td><td class="num">0.0410</td><td class="num">0.0437</td><td class="num">0.5907</td><td class="grp-start num">24.11</td><td class="num">0.7544</td><td class="num">0.0755</td><td class="num">0.0808</td><td class="num">1.0221</td><td class="grp-start num">20.69</td><td class="num">0.6477</td><td class="num">0.1342</td><td class="num">0.1473</td><td class="num">1.6355</td></tr>
+<tr><td class="col-method">AMT</td><td class="grp-start num">30.05</td><td class="num">0.8999</td><td class="num">0.0456</td><td class="num">0.0512</td><td class="num">0.5873</td><td class="grp-start num">24.33</td><td class="num">0.7604</td><td class="num">0.0903</td><td class="num">0.1070</td><td class="num">1.1133</td><td class="grp-start num">20.81</td><td class="num">0.6576</td><td class="num">0.1835</td><td class="num">0.2279</td><td class="num">1.9164</td></tr>
+<tr><td class="col-method">GIMM-VFI</td><td class="grp-start num second">30.59</td><td class="num second">0.9086</td><td class="num">0.0576</td><td class="num">0.0618</td><td class="num">0.5072</td><td class="grp-start num second">25.00</td><td class="num second">0.7820</td><td class="num">0.1224</td><td class="num">0.1297</td><td class="num">0.9322</td><td class="grp-start num second">21.55</td><td class="num best">0.6866</td><td class="num">0.2332</td><td class="num">0.2487</td><td class="num">1.4521</td></tr>
+<tr><td class="col-method">InterpAny</td><td class="grp-start num">29.82</td><td class="num">0.8979</td><td class="num">0.0514</td><td class="num">0.0573</td><td class="num">0.5669</td><td class="grp-start num">24.37</td><td class="num">0.7639</td><td class="num">0.1046</td><td class="num">0.1183</td><td class="num">1.0552</td><td class="grp-start num">20.99</td><td class="num">0.6653</td><td class="num">0.2036</td><td class="num">0.2343</td><td class="num">1.6916</td></tr>
+<tr><td class="col-method">BiM-VFI</td><td class="grp-start num">29.79</td><td class="num">0.8943</td><td class="num">0.0396</td><td class="num">0.0432</td><td class="num">0.5878</td><td class="grp-start num">24.19</td><td class="num">0.7529</td><td class="num">0.0768</td><td class="num">0.0831</td><td class="num">1.0253</td><td class="grp-start num">20.77</td><td class="num">0.6484</td><td class="num">0.1366</td><td class="num">0.1500</td><td class="num">1.5256</td></tr>
+<tr><td class="col-method">VTinker</td><td class="grp-start num">29.81</td><td class="num">0.8954</td><td class="num">0.0368</td><td class="num second">0.0391</td><td class="num">0.5459</td><td class="grp-start num">24.27</td><td class="num">0.7546</td><td class="num best">0.0735</td><td class="num second">0.0786</td><td class="num">0.9834</td><td class="grp-start num">20.87</td><td class="num">0.6501</td><td class="num second">0.1328</td><td class="num second">0.1451</td><td class="num">1.5073</td></tr>
+<tr><td class="col-method">EMA-VFI</td><td class="grp-start num">30.22</td><td class="num">0.9031</td><td class="num">0.0487</td><td class="num">0.0533</td><td class="num">0.5438</td><td class="grp-start num">24.49</td><td class="num">0.7646</td><td class="num">0.0922</td><td class="num">0.1007</td><td class="num">0.9959</td><td class="grp-start num">21.02</td><td class="num">0.6627</td><td class="num">0.1719</td><td class="num">0.1938</td><td class="num">1.5353</td></tr>
+</tbody>
+<tbody>
+<tr class="group"><td colspan="16"><span class="group-label"><i>Diffusion-based</i></span></td></tr>
+<tr><td class="col-method">LDMVFI</td><td class="grp-start num">28.77</td><td class="num">0.8787</td><td class="num">0.0565</td><td class="num">0.0640</td><td class="num">0.6950</td><td class="grp-start num">23.70</td><td class="num">0.7411</td><td class="num">0.1072</td><td class="num">0.1228</td><td class="num">1.2991</td><td class="grp-start num">20.47</td><td class="num">0.6348</td><td class="num">0.1830</td><td class="num">0.2060</td><td class="num">2.0141</td></tr>
+<tr><td class="col-method">CBBD</td><td class="grp-start num">29.65</td><td class="num">0.8944</td><td class="num">0.0390</td><td class="num">0.0457</td><td class="num">0.6275</td><td class="grp-start num">23.87</td><td class="num">0.7499</td><td class="num">0.0840</td><td class="num">0.1037</td><td class="num">1.3145</td><td class="grp-start num">20.37</td><td class="num">0.6405</td><td class="num">0.1616</td><td class="num">0.1903</td><td class="num">2.1002</td></tr>
+<tr><td class="col-method">MoMo</td><td class="grp-start num">29.70</td><td class="num">0.8924</td><td class="num best">0.0365</td><td class="num">0.0392</td><td class="num">0.5554</td><td class="grp-start num">24.10</td><td class="num">0.7502</td><td class="num">0.0743</td><td class="num">0.0802</td><td class="num">1.0030</td><td class="grp-start num">20.70</td><td class="num">0.6451</td><td class="num">0.1347</td><td class="num">0.1481</td><td class="num">1.5137</td></tr>
+<tr><td class="col-method">EDEN</td><td class="grp-start num">29.44</td><td class="num">0.8905</td><td class="num">0.0453</td><td class="num">0.0478</td><td class="num">0.5713</td><td class="grp-start num">24.43</td><td class="num">0.7628</td><td class="num">0.0939</td><td class="num">0.0994</td><td class="num">1.0423</td><td class="grp-start num">21.24</td><td class="num">0.6666</td><td class="num">0.1699</td><td class="num">0.1807</td><td class="num">1.6710</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="grp-start num">29.58</td><td class="num">0.8941</td><td class="num">0.0373</td><td class="num">0.0436</td><td class="num">0.6310</td><td class="grp-start num">23.75</td><td class="num">0.7467</td><td class="num">0.0811</td><td class="num">0.1004</td><td class="num">1.3140</td><td class="grp-start num">20.58</td><td class="num">0.6486</td><td class="num">0.1471</td><td class="num">0.1654</td><td class="num">1.6808</td></tr>
+<tr><td class="col-method">SPEED</td><td class="grp-start num">28.39</td><td class="num">0.8764</td><td class="num">0.0538</td><td class="num">0.0552</td><td class="num">0.5562</td><td class="grp-start num">24.06</td><td class="num">0.7556</td><td class="num">0.0941</td><td class="num">0.0976</td><td class="num">0.9861</td><td class="grp-start num">20.98</td><td class="num">0.6605</td><td class="num">0.1584</td><td class="num">0.1670</td><td class="num">1.4789</td></tr>
+<tr><td class="col-method">LDF-VFI</td><td class="grp-start num">28.37</td><td class="num">0.8775</td><td class="num">0.0637</td><td class="num">0.0660</td><td class="num second">0.4886</td><td class="grp-start num">24.26</td><td class="num">0.7658</td><td class="num">0.0920</td><td class="num">0.0956</td><td class="num second">0.8834</td><td class="grp-start num">20.80</td><td class="num">0.6520</td><td class="num">0.1492</td><td class="num">0.1572</td><td class="num second">1.4186</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="grp-start num best">33.01</td><td class="num best">0.9478</td><td class="num second">0.0367</td><td class="num best">0.0385</td><td class="num best">0.3280</td><td class="grp-start num best">25.84</td><td class="num best">0.8010</td><td class="num second">0.0740</td><td class="num best">0.0766</td><td class="num best">0.7898</td><td class="grp-start num best">21.67</td><td class="num second">0.6764</td><td class="num best">0.1304</td><td class="num best">0.1360</td><td class="num best">1.3559</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+</div>
+</div>
+        <div class="disclosures">
+        <details class="disclosure" id="fvd" data-animate>
+          <summary>Video quality (FVD) on SNU-FILM <span class="summary-sub">Table 11</span></summary>
+          <div class="disclosure-panel"><div class="disclosure-body">
+<figure class="table-figure" id="table-11">
+<figcaption><span class="fig-label">Table 11.</span> <b>Video-level FVD comparison on SNU-FILM.</b> Lower FVD is better.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span><span><span class="second">Underline</span> second best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 11 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th scope="col" class="col-method">Method</th><th scope="col" class="metric grp-start">×4</th><th scope="col" class="metric grp-start">×8</th><th scope="col" class="metric grp-start">×16</th></tr>
+</thead>
+<tbody>
+<tr class="group"><td colspan="4"><span class="group-label"><i>Non-diffusion</i></span></td></tr>
+<tr><td class="col-method">FILM</td><td class="grp-start num best">4.17</td><td class="grp-start num">15.90</td><td class="grp-start num">36.90</td></tr>
+<tr><td class="col-method">RIFE</td><td class="grp-start num">5.95</td><td class="grp-start num">18.68</td><td class="grp-start num">37.35</td></tr>
+<tr><td class="col-method">AMT</td><td class="grp-start num">6.63</td><td class="grp-start num">19.39</td><td class="grp-start num">60.22</td></tr>
+<tr><td class="col-method">GIMM-VFI</td><td class="grp-start num">7.20</td><td class="grp-start num">22.10</td><td class="grp-start num">70.67</td></tr>
+<tr><td class="col-method">InterpAny</td><td class="grp-start num">9.24</td><td class="grp-start num">22.28</td><td class="grp-start num">55.59</td></tr>
+<tr><td class="col-method">BiM-VFI</td><td class="grp-start num">5.68</td><td class="grp-start num">17.20</td><td class="grp-start num">35.79</td></tr>
+<tr><td class="col-method">VTinker</td><td class="grp-start num">5.64</td><td class="grp-start num">18.23</td><td class="grp-start num">42.60</td></tr>
+<tr><td class="col-method">EMA-VFI</td><td class="grp-start num">5.73</td><td class="grp-start num">20.12</td><td class="grp-start num">53.12</td></tr>
+</tbody>
+<tbody>
+<tr class="group"><td colspan="4"><span class="group-label"><i>Diffusion-based</i></span></td></tr>
+<tr><td class="col-method">LDMVFI</td><td class="grp-start num">8.29</td><td class="grp-start num">26.81</td><td class="grp-start num">66.89</td></tr>
+<tr><td class="col-method">CBBD</td><td class="grp-start num">5.09</td><td class="grp-start num">19.56</td><td class="grp-start num">55.22</td></tr>
+<tr><td class="col-method">MoMo</td><td class="grp-start num">4.75</td><td class="grp-start num">19.68</td><td class="grp-start num">44.68</td></tr>
+<tr><td class="col-method">EDEN</td><td class="grp-start num">9.49</td><td class="grp-start num">25.20</td><td class="grp-start num">59.35</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="grp-start num second">4.42</td><td class="grp-start num">17.91</td><td class="grp-start num">38.60</td></tr>
+<tr><td class="col-method">SPEED</td><td class="grp-start num">6.53</td><td class="grp-start num">22.97</td><td class="grp-start num">51.91</td></tr>
+<tr><td class="col-method">LDF-VFI</td><td class="grp-start num">12.50</td><td class="grp-start num best">14.98</td><td class="grp-start num best">25.89</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="grp-start num">5.35</td><td class="grp-start num second">15.42</td><td class="grp-start num second">35.53</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+          </div></div>
+        </details>
+        <details class="disclosure" id="davis-full" data-animate>
+          <summary>DAVIS, all metrics <span class="summary-sub">Table 13</span></summary>
+          <div class="disclosure-panel"><div class="disclosure-body">
+<figure class="table-figure" id="table-13">
+<figcaption><span class="fig-label">Table 13.</span> <b>Extended quantitative comparison on DAVIS 2016.</b> Evaluation on all 50 sequences at native resolutions. Temporal metrics and FVD use GT observed frames.</figcaption>
+<div class="table-meta"><div class="table-legend"><span><span class="best">Bold</span> best</span><span><span class="second">Underline</span> second best</span></div><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 13 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th scope="col" class="col-method">Method</th><th scope="col" class="metric grp-start">PSNR<span class="arrow">↑</span></th><th scope="col" class="metric grp-start">SSIM<span class="arrow">↑</span></th><th scope="col" class="metric grp-start">LPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">FloLPIPS<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">tOF<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">tLP<span class="arrow">↓</span></th><th scope="col" class="metric grp-start">FVD<span class="arrow">↓</span></th></tr>
+</thead>
+<tbody>
+<tr class="group"><td colspan="8"><span class="group-label"><b>×4</b></span></td></tr>
+<tr class="group"><td colspan="8"><span class="group-label"><i>Non-diffusion</i></span></td></tr>
+<tr><td class="col-method">FILM</td><td class="grp-start num">21.80</td><td class="grp-start num">0.7587</td><td class="grp-start num">0.2048</td><td class="grp-start num">0.2509</td><td class="grp-start num">23.79</td><td class="grp-start num">6.286</td><td class="grp-start num">169.41</td></tr>
+<tr><td class="col-method">RIFE</td><td class="grp-start num">22.83</td><td class="grp-start num">0.7882</td><td class="grp-start num">0.1683</td><td class="grp-start num">0.2171</td><td class="grp-start num">17.80</td><td class="grp-start num">4.291</td><td class="grp-start num">118.50</td></tr>
+<tr><td class="col-method">AMT</td><td class="grp-start num">21.76</td><td class="grp-start num">0.7682</td><td class="grp-start num">0.2999</td><td class="grp-start num">0.3687</td><td class="grp-start num">28.20</td><td class="grp-start num">6.546</td><td class="grp-start num">237.96</td></tr>
+<tr><td class="col-method">GIMM-VFI</td><td class="grp-start num second">23.81</td><td class="grp-start num second">0.8209</td><td class="grp-start num">0.2737</td><td class="grp-start num">0.3293</td><td class="grp-start num">15.67</td><td class="grp-start num">6.322</td><td class="grp-start num">145.37</td></tr>
+<tr><td class="col-method">InterpAny</td><td class="grp-start num">22.27</td><td class="grp-start num">0.7812</td><td class="grp-start num">0.3049</td><td class="grp-start num">0.3785</td><td class="grp-start num">23.77</td><td class="grp-start num">6.349</td><td class="grp-start num">242.35</td></tr>
+<tr><td class="col-method">BiM-VFI</td><td class="grp-start num">22.86</td><td class="grp-start num">0.7910</td><td class="grp-start num">0.1643</td><td class="grp-start num">0.2130</td><td class="grp-start num second">12.67</td><td class="grp-start num second">3.059</td><td class="grp-start num best">81.34</td></tr>
+<tr><td class="col-method">VTinker</td><td class="grp-start num">22.71</td><td class="grp-start num">0.7818</td><td class="grp-start num">0.1742</td><td class="grp-start num">0.2218</td><td class="grp-start num">18.68</td><td class="grp-start num">4.410</td><td class="grp-start num">112.24</td></tr>
+<tr><td class="col-method">EMA-VFI</td><td class="grp-start num">22.61</td><td class="grp-start num">0.7876</td><td class="grp-start num">0.2743</td><td class="grp-start num">0.3332</td><td class="grp-start num">23.07</td><td class="grp-start num">6.324</td><td class="grp-start num">163.35</td></tr>
+<tr class="group"><td colspan="8"><span class="group-label"><i>Diffusion-based</i></span></td></tr>
+<tr><td class="col-method">LDMVFI</td><td class="grp-start num">20.87</td><td class="grp-start num">0.7362</td><td class="grp-start num">0.2499</td><td class="grp-start num">0.3001</td><td class="grp-start num">26.24</td><td class="grp-start num">9.270</td><td class="grp-start num">356.79</td></tr>
+<tr><td class="col-method">CBBD</td><td class="grp-start num">20.60</td><td class="grp-start num">0.7339</td><td class="grp-start num">0.2634</td><td class="grp-start num">0.3118</td><td class="grp-start num">27.50</td><td class="grp-start num">7.869</td><td class="grp-start num">339.36</td></tr>
+<tr><td class="col-method">MoMo</td><td class="grp-start num">22.50</td><td class="grp-start num">0.7780</td><td class="grp-start num">0.1718</td><td class="grp-start num">0.2231</td><td class="grp-start num">15.80</td><td class="grp-start num">3.195</td><td class="grp-start num">104.36</td></tr>
+<tr><td class="col-method">EDEN</td><td class="grp-start num">22.34</td><td class="grp-start num">0.7635</td><td class="grp-start num">0.3260</td><td class="grp-start num">0.3717</td><td class="grp-start num">25.72</td><td class="grp-start num">9.031</td><td class="grp-start num">369.95</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="grp-start num">20.62</td><td class="grp-start num">0.7322</td><td class="grp-start num">0.2367</td><td class="grp-start num">0.2838</td><td class="grp-start num">27.53</td><td class="grp-start num">10.192</td><td class="grp-start num">306.43</td></tr>
+<tr><td class="col-method">SPEED</td><td class="grp-start num">23.15</td><td class="grp-start num">0.7951</td><td class="grp-start num second">0.1570</td><td class="grp-start num second">0.2022</td><td class="grp-start num">12.74</td><td class="grp-start num">4.219</td><td class="grp-start num">114.93</td></tr>
+<tr><td class="col-method">LDF-VFI</td><td class="grp-start num">22.74</td><td class="grp-start num">0.7894</td><td class="grp-start num">0.2444</td><td class="grp-start num">0.2885</td><td class="grp-start num">18.82</td><td class="grp-start num">5.668</td><td class="grp-start num">103.08</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="grp-start num best">24.56</td><td class="grp-start num best">0.8263</td><td class="grp-start num best">0.1422</td><td class="grp-start num best">0.1785</td><td class="grp-start num best">8.11</td><td class="grp-start num best">2.672</td><td class="grp-start num second">90.44</td></tr>
+</tbody>
+<tbody>
+<tr class="group"><td colspan="8"><span class="group-label"><b>×8</b></span></td></tr>
+<tr class="group"><td colspan="8"><span class="group-label"><i>Non-diffusion</i></span></td></tr>
+<tr><td class="col-method">FILM</td><td class="grp-start num">18.87</td><td class="grp-start num">0.6755</td><td class="grp-start num">0.2918</td><td class="grp-start num">0.3348</td><td class="grp-start num">28.38</td><td class="grp-start num">12.758</td><td class="grp-start num">402.86</td></tr>
+<tr><td class="col-method">RIFE</td><td class="grp-start num">19.71</td><td class="grp-start num">0.7035</td><td class="grp-start num">0.2553</td><td class="grp-start num">0.3015</td><td class="grp-start num">24.74</td><td class="grp-start num">9.505</td><td class="grp-start num">274.82</td></tr>
+<tr><td class="col-method">AMT</td><td class="grp-start num">19.12</td><td class="grp-start num">0.6974</td><td class="grp-start num">0.4137</td><td class="grp-start num">0.4706</td><td class="grp-start num">31.22</td><td class="grp-start num">10.274</td><td class="grp-start num">463.73</td></tr>
+<tr><td class="col-method">GIMM-VFI</td><td class="grp-start num second">20.59</td><td class="grp-start num second">0.7437</td><td class="grp-start num">0.3903</td><td class="grp-start num">0.4424</td><td class="grp-start num">22.94</td><td class="grp-start num">10.607</td><td class="grp-start num">299.87</td></tr>
+<tr><td class="col-method">InterpAny</td><td class="grp-start num">19.53</td><td class="grp-start num">0.7081</td><td class="grp-start num">0.4108</td><td class="grp-start num">0.4680</td><td class="grp-start num">28.00</td><td class="grp-start num">9.134</td><td class="grp-start num">432.54</td></tr>
+<tr><td class="col-method">BiM-VFI</td><td class="grp-start num">19.71</td><td class="grp-start num">0.7048</td><td class="grp-start num">0.2451</td><td class="grp-start num">0.2933</td><td class="grp-start num second">20.65</td><td class="grp-start num second">5.083</td><td class="grp-start num second">186.78</td></tr>
+<tr><td class="col-method">VTinker</td><td class="grp-start num">19.47</td><td class="grp-start num">0.6910</td><td class="grp-start num">0.2680</td><td class="grp-start num">0.3160</td><td class="grp-start num">25.83</td><td class="grp-start num">10.453</td><td class="grp-start num">304.52</td></tr>
+<tr><td class="col-method">EMA-VFI</td><td class="grp-start num">19.76</td><td class="grp-start num">0.7146</td><td class="grp-start num">0.3933</td><td class="grp-start num">0.4470</td><td class="grp-start num">27.53</td><td class="grp-start num">9.802</td><td class="grp-start num">373.10</td></tr>
+<tr class="group"><td colspan="8"><span class="group-label"><i>Diffusion-based</i></span></td></tr>
+<tr><td class="col-method">LDMVFI</td><td class="grp-start num">18.67</td><td class="grp-start num">0.6675</td><td class="grp-start num">0.3200</td><td class="grp-start num">0.3612</td><td class="grp-start num">29.49</td><td class="grp-start num">16.519</td><td class="grp-start num">524.84</td></tr>
+<tr><td class="col-method">CBBD</td><td class="grp-start num">18.29</td><td class="grp-start num">0.6601</td><td class="grp-start num">0.3492</td><td class="grp-start num">0.3899</td><td class="grp-start num">29.73</td><td class="grp-start num">12.802</td><td class="grp-start num">553.53</td></tr>
+<tr><td class="col-method">MoMo</td><td class="grp-start num">19.33</td><td class="grp-start num">0.6888</td><td class="grp-start num">0.2638</td><td class="grp-start num">0.3145</td><td class="grp-start num">24.04</td><td class="grp-start num">6.053</td><td class="grp-start num">278.77</td></tr>
+<tr><td class="col-method">EDEN</td><td class="grp-start num">20.06</td><td class="grp-start num">0.6998</td><td class="grp-start num">0.4239</td><td class="grp-start num">0.4605</td><td class="grp-start num">32.12</td><td class="grp-start num">12.981</td><td class="grp-start num">705.41</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="grp-start num">18.30</td><td class="grp-start num">0.6591</td><td class="grp-start num">0.3097</td><td class="grp-start num">0.3508</td><td class="grp-start num">29.72</td><td class="grp-start num">16.402</td><td class="grp-start num">506.87</td></tr>
+<tr><td class="col-method">SPEED</td><td class="grp-start num">20.12</td><td class="grp-start num">0.7126</td><td class="grp-start num second">0.2426</td><td class="grp-start num second">0.2881</td><td class="grp-start num">21.31</td><td class="grp-start num">8.222</td><td class="grp-start num">283.50</td></tr>
+<tr><td class="col-method">LDF-VFI</td><td class="grp-start num">20.11</td><td class="grp-start num">0.7190</td><td class="grp-start num">0.3055</td><td class="grp-start num">0.3535</td><td class="grp-start num">24.68</td><td class="grp-start num">7.539</td><td class="grp-start num best">182.83</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="grp-start num best">21.64</td><td class="grp-start num best">0.7549</td><td class="grp-start num best">0.2099</td><td class="grp-start num best">0.2455</td><td class="grp-start num best">13.53</td><td class="grp-start num best">4.784</td><td class="grp-start num">192.52</td></tr>
+</tbody>
+<tbody>
+<tr class="group"><td colspan="8"><span class="group-label"><b>×16</b></span></td></tr>
+<tr class="group"><td colspan="8"><span class="group-label"><i>Non-diffusion</i></span></td></tr>
+<tr><td class="col-method">FILM</td><td class="grp-start num">17.06</td><td class="grp-start num">0.6136</td><td class="grp-start num">0.3692</td><td class="grp-start num">0.4039</td><td class="grp-start num">29.72</td><td class="grp-start num">18.118</td><td class="grp-start num">584.19</td></tr>
+<tr><td class="col-method">RIFE</td><td class="grp-start num">17.54</td><td class="grp-start num">0.6331</td><td class="grp-start num">0.3475</td><td class="grp-start num">0.3843</td><td class="grp-start num">28.39</td><td class="grp-start num">15.606</td><td class="grp-start num">468.43</td></tr>
+<tr><td class="col-method">AMT</td><td class="grp-start num">17.53</td><td class="grp-start num">0.6471</td><td class="grp-start num">0.5107</td><td class="grp-start num">0.5515</td><td class="grp-start num">31.21</td><td class="grp-start num">15.768</td><td class="grp-start num">793.09</td></tr>
+<tr><td class="col-method">GIMM-VFI</td><td class="grp-start num">18.22</td><td class="grp-start num second">0.6752</td><td class="grp-start num">0.5046</td><td class="grp-start num">0.5437</td><td class="grp-start num">27.51</td><td class="grp-start num">17.109</td><td class="grp-start num">559.78</td></tr>
+<tr><td class="col-method">InterpAny</td><td class="grp-start num">17.81</td><td class="grp-start num">0.6544</td><td class="grp-start num">0.5028</td><td class="grp-start num">0.5439</td><td class="grp-start num">29.57</td><td class="grp-start num">13.458</td><td class="grp-start num">651.71</td></tr>
+<tr><td class="col-method">BiM-VFI</td><td class="grp-start num">17.40</td><td class="grp-start num">0.6280</td><td class="grp-start num">0.3413</td><td class="grp-start num">0.3810</td><td class="grp-start num second">26.06</td><td class="grp-start num">9.471</td><td class="grp-start num second">364.75</td></tr>
+<tr><td class="col-method">VTinker</td><td class="grp-start num">17.39</td><td class="grp-start num">0.6221</td><td class="grp-start num">0.3575</td><td class="grp-start num">0.3949</td><td class="grp-start num">28.98</td><td class="grp-start num">16.870</td><td class="grp-start num">516.47</td></tr>
+<tr><td class="col-method">EMA-VFI</td><td class="grp-start num">17.99</td><td class="grp-start num">0.6606</td><td class="grp-start num">0.4990</td><td class="grp-start num">0.5417</td><td class="grp-start num">29.22</td><td class="grp-start num">15.252</td><td class="grp-start num">662.71</td></tr>
+<tr class="group"><td colspan="8"><span class="group-label"><i>Diffusion-based</i></span></td></tr>
+<tr><td class="col-method">LDMVFI</td><td class="grp-start num">17.23</td><td class="grp-start num">0.6159</td><td class="grp-start num">0.3813</td><td class="grp-start num">0.4115</td><td class="grp-start num">30.08</td><td class="grp-start num">21.370</td><td class="grp-start num">711.21</td></tr>
+<tr><td class="col-method">CBBD</td><td class="grp-start num">16.77</td><td class="grp-start num">0.6051</td><td class="grp-start num">0.4291</td><td class="grp-start num">0.4591</td><td class="grp-start num">30.10</td><td class="grp-start num">15.504</td><td class="grp-start num">756.59</td></tr>
+<tr><td class="col-method">MoMo</td><td class="grp-start num">17.26</td><td class="grp-start num">0.6189</td><td class="grp-start num">0.3523</td><td class="grp-start num">0.3936</td><td class="grp-start num">28.33</td><td class="grp-start num">10.935</td><td class="grp-start num">509.24</td></tr>
+<tr><td class="col-method">EDEN</td><td class="grp-start num second">18.38</td><td class="grp-start num">0.6488</td><td class="grp-start num">0.4940</td><td class="grp-start num">0.5217</td><td class="grp-start num">32.87</td><td class="grp-start num">17.676</td><td class="grp-start num">1355.58</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="grp-start num">17.14</td><td class="grp-start num">0.6195</td><td class="grp-start num">0.3630</td><td class="grp-start num">0.3984</td><td class="grp-start num">29.40</td><td class="grp-start num">17.767</td><td class="grp-start num">543.80</td></tr>
+<tr><td class="col-method">SPEED</td><td class="grp-start num">17.85</td><td class="grp-start num">0.6413</td><td class="grp-start num second">0.3399</td><td class="grp-start num second">0.3764</td><td class="grp-start num">27.30</td><td class="grp-start num">13.932</td><td class="grp-start num">547.51</td></tr>
+<tr><td class="col-method">LDF-VFI</td><td class="grp-start num">17.71</td><td class="grp-start num">0.6480</td><td class="grp-start num">0.3974</td><td class="grp-start num">0.4405</td><td class="grp-start num">26.97</td><td class="grp-start num second">9.376</td><td class="grp-start num best">348.81</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="grp-start num best">19.17</td><td class="grp-start num best">0.6848</td><td class="grp-start num best">0.2962</td><td class="grp-start num best">0.3275</td><td class="grp-start num best">19.92</td><td class="grp-start num best">8.464</td><td class="grp-start num">391.26</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+          </div></div>
+        </details>
+        <details class="disclosure" id="cost" data-animate>
+          <summary>Inference cost <span class="summary-sub">Tables 5 and 12 &middot; latency, NFE, memory, stage costs</span></summary>
+          <div class="disclosure-panel"><div class="disclosure-body">
+<figure class="table-figure" id="table-5">
+<figcaption><span class="fig-label">Table 5.</span> <b>End-to-end inference cost.</b> Latency is total inference time per synthesized frame, including auxiliary processing and excluding model loading on a B200 GPU. NFE counts primary-network evaluations in the stated units. Memory is the maximum peak allocation across factors.</figcaption>
+<div class="table-meta table-meta--hint"><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 5 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th rowspan="2" scope="col" class="col-method">Method</th><th rowspan="2" scope="col" class="metric grp-start">NFE</th><th colspan="4" scope="colgroup" class="col-group grp-start"><span>s / frame<span class="arrow">↓</span></span></th><th rowspan="2" scope="col" class="metric grp-start">Peak<br>Memory<br>(GiB)</th></tr>
+<tr><th scope="col" class="metric grp-start">×2</th><th scope="col" class="metric">×4</th><th scope="col" class="metric">×8</th><th scope="col" class="metric">×16</th></tr>
+</thead>
+<tbody>
+<tr><td class="col-method">LDMVFI</td><td class="grp-start num">200 / frame</td><td class="grp-start num">4.283</td><td class="num">4.783</td><td class="num">4.338</td><td class="num">4.361</td><td class="grp-start num">13.42</td></tr>
+<tr><td class="col-method">CBBD</td><td class="grp-start num">50 / frame</td><td class="grp-start num">1.172</td><td class="num">1.054</td><td class="num">1.237</td><td class="num">1.190</td><td class="grp-start num">17.87</td></tr>
+<tr><td class="col-method">MoMo</td><td class="grp-start num">8 / frame</td><td class="grp-start num">0.087</td><td class="num">0.090</td><td class="num">0.088</td><td class="num">0.085</td><td class="grp-start num">11.02</td></tr>
+<tr><td class="col-method">EDEN</td><td class="grp-start num">2 / frame</td><td class="grp-start num">0.101</td><td class="num">0.093</td><td class="num">0.093</td><td class="num">0.102</td><td class="grp-start num">7.56</td></tr>
+<tr><td class="col-method">TLB-VFI</td><td class="grp-start num">10 / frame</td><td class="grp-start num">0.441</td><td class="num">0.445</td><td class="num">0.438</td><td class="num">0.431</td><td class="grp-start num">34.24</td></tr>
+<tr><td class="col-method">SPEED</td><td class="grp-start num">1 / frame</td><td class="grp-start num">0.013</td><td class="num">0.019</td><td class="num">0.020</td><td class="num">0.018</td><td class="grp-start num">6.38</td></tr>
+</tbody>
+<tbody>
+<tr><td class="col-method">LDF-VFI</td><td class="grp-start num">16 / chunk</td><td class="grp-start num">10.304</td><td class="num">7.048</td><td class="num">6.093</td><td class="num">7.305</td><td class="grp-start num">11.91</td></tr>
+<tr class="ours"><td class="col-method"><b>RePix-VFI</b></td><td class="grp-start num">1 / window</td><td class="grp-start num">0.319</td><td class="num">0.217</td><td class="num">0.186</td><td class="num">0.175</td><td class="grp-start num">42.05</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+<figure class="table-figure" id="table-12">
+<figcaption><span class="fig-label">Table 12.</span> <b>Reconstruction stage costs.</b> Separately synchronized profiling in seconds per 49-frame, 720p window at &times;8 on an NVIDIA B200. The median is computed separately for each stage and for the total runtime.</figcaption>
+<div class="table-meta table-meta--hint"><span class="table-hint"><svg class="icon" aria-hidden="true"><use href="#i-swipe"/></svg>Scroll for more columns</span></div>
+<div class="table-frame"><div class="table-scroll" tabindex="0" role="region" aria-label="Table 12 (scrolls horizontally)"><table class="results">
+<thead>
+<tr><th scope="col" class="col-method">Stage</th><th scope="col" class="metric grp-start">Time (s)</th></tr>
+</thead>
+<tbody>
+<tr><td class="col-method">Draft construction</td><td class="grp-start num">0.71</td></tr>
+<tr><td class="col-method">One-step generation and VAE</td><td class="grp-start num">4.40</td></tr>
+<tr><td class="col-method">Readback and re-rendering</td><td class="grp-start num">2.21</td></tr>
+<tr><td class="col-method">Fusion and remaining processing</td><td class="grp-start num">0.57</td></tr>
+</tbody>
+<tbody>
+<tr><td class="col-method">Total (instrumented run)</td><td class="grp-start num">7.90</td></tr>
+</tbody>
+</table></div></div>
+</figure>
+          </div></div>
+        </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ METHOD ============ -->
+    <section class="section" id="method" aria-labelledby="method-title">
+      <div class="container container--wide">
+        <header class="section-head">
+          <h2 class="section-title" id="method-title">Re-rendering observed pixels</h2>
+        </header>
+<figure class="figure">
+  <a class="figure-media zoom" href="static/images/teaser_full.jpg" data-title="RePix-VFI re-renders observed pixels using a one-step generated video as the correspondence reference.">
+    <img src="static/images/teaser_1600.jpg" srcset="static/images/teaser_1200.jpg 1200w, static/images/teaser_1600.jpg 1600w, static/images/teaser_2000.jpg 2000w, static/images/teaser_full.jpg 3000w" sizes="(min-width: 1304px) 1240px, calc(100vw - 2 * clamp(16px, 4vw, 32px))" width="1600" height="481" loading="lazy" decoding="async" alt="Four panels: flow-based VFI, diffusion-based VFI and RePix-VFI as diagrams, and a plot of PSNR against LPIPS on SNU-FILM x16 with RePix-VFI at the upper right">
+  </a>
+  <figcaption><span class="fig-label">Figure 1.</span> <b>RePix-VFI re-renders observed pixels using a one-step generated video as the correspondence reference.</b> (a) Flow-based VFI transports observed appearance but can misplace details under inaccurate correspondences. (b) Diffusion-based VFI draws on generative priors but typically requires iterative denoising and can lose observed details in VAE reconstruction. (c) Our RePix-VFI refines a flow-rendered draft in a single forward pass. The completed prediction provides correspondence references for re-rendering original keyframe RGB outside the VAE and supplies complementary appearance for fusion. (d) On SNU-FILM &times;16, RePix-VFI achieves both the highest PSNR and the lowest LPIPS among the compared methods (upper right is better).</figcaption>
+</figure>
+<figure class="figure">
+  <a class="figure-media zoom" href="static/images/framework_full.jpg" data-title="Overview of RePix-VFI.">
+    <img src="static/images/framework_2000.jpg" srcset="static/images/framework_1200.jpg 1200w, static/images/framework_2000.jpg 2000w, static/images/framework_2800.jpg 2800w" sizes="(min-width: 1304px) 1240px, calc(100vw - 2 * clamp(16px, 4vw, 32px))" width="2000" height="652" loading="lazy" decoding="async" alt="Architecture diagram in four stages: flow-rendered draft, one-step generation with a video diffusion transformer, readback flows and re-rendering of the keyframes, and the appearance fusion head">
+  </a>
+  <figcaption><span class="fig-label">Figure 2.</span> <b>Overview of RePix-VFI.</b> (i) Stage&nbsp;1: A flow-based renderer constructs a draft from observed keyframes. (ii) Stage&nbsp;2: A generator refines the draft latent in one forward pass, conditioned on the observations and their temporal mask. (iii) Stage&nbsp;3: Mixing draft and readback flows yields <i>I</i><sub>rf</sub><sup>warp</sup>, while readback flows alone yield <i>I</i><sub>g</sub><sup>warp</sup>. (iv) Stage&nbsp;4: A lightweight appearance fusion head combines four RGB inputs to predict spatial mixing between <i>I</i><sub>rf</sub><sup>warp</sup> and <i>I</i><sup>gen</sup>, together with a residual correction.</figcaption>
+</figure>
+        <ol class="keypoints">
+          <li><span class="kp-num">01</span><b>Flow-rendered draft.</b> A flow-based renderer builds a draft of the whole window from the observed keyframes, so generation starts from the draft, not from noise.</li>
+          <li><span class="kp-num">02</span><b>One-step generation.</b> A pretrained video diffusion model refines the draft latent in a single forward pass, conditioned on the observations and their temporal mask.</li>
+          <li><span class="kp-num">03</span><b>Generative readback.</b> For each target frame, an optical-flow estimator matches its two bounding keyframes to the generated prediction; the correspondences re-render the original keyframe RGB outside the VAE.</li>
+          <li><span class="kp-num">04</span><b>Appearance fusion.</b> A lightweight head combines the re-rendered and generated appearance through spatial mixing and a residual correction.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ BIBTEX ============ -->
+    <section class="section section--band" id="bibtex" aria-labelledby="bibtex-title">
+      <div class="container">
+        <header class="section-head">
+          <h2 class="section-title" id="bibtex-title">BibTeX</h2>
+        </header>
+        <div class="bibtex">
+          <div class="bibtex-head">
+            <button class="copy-btn" type="button" data-copy="#bibtex-code">
+            <svg class="icon icon-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="icon icon-done" aria-hidden="true"><use href="#i-check"/></svg><span class="copy-label" aria-live="polite">Copy</span>
+          </button>
+          </div>
+<pre><code id="bibtex-code">@article{kim2026repixvfi,
+  title={RePix-VFI: Re-rendering Observed Pixels for Video Frame Interpolation with Generative Priors from One-Step Diffusion},
+  author={Kim, Dayeon and Do, Jeonghyeok and Kim, Munchurl},
+  journal={arXiv preprint arXiv:XXXX.XXXXX},
+  year={2026}
+}</code></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <p class="footer-meta"><span class="footer-brand"><img src="static/images/icon.svg" width="720" height="494" alt="" loading="lazy"><span class="wordmark"><span>RePix</span>-VFI</span></span>&nbsp;&middot; arXiv preprint, 2026&nbsp;&middot; Korea Advanced Institute of Science and Technology (KAIST)</p>
+    <nav class="footer-links" aria-label="Footer">
+      <a href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank" rel="noopener">arXiv</a>
+      <a href="https://github.com/KAIST-VICLab/RePix-VFI" target="_blank" rel="noopener">Code</a>
+      <a href="mailto:dyk4501@kaist.ac.kr,ehwjdgur0913@kaist.ac.kr,mkimee@kaist.ac.kr">Contact</a>
+      <a href="#top">Back to top &uarr;</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>
